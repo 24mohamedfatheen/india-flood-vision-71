@@ -29,20 +29,37 @@ const PredictionCard: React.FC<PredictionCardProps> = ({ floodData }) => {
     predictedFlood.probabilityPercentage > 75 ? 'text-flood-danger' :
     predictedFlood.probabilityPercentage > 50 ? 'text-flood-warning' :
     'text-flood-safe';
+    
+  const daysUntil = Math.ceil((new Date(predictedFlood.date).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
 
   return (
     <div className="flood-card">
-      <h2 className="font-semibold mb-4 text-lg">Flood Prediction</h2>
+      <h2 className="font-semibold mb-4 text-lg">Flood Risk Assessment</h2>
       
       <div className="space-y-4">
+        <div>
+          <span className="text-xs text-muted-foreground block mb-1">Region Risk Level</span>
+          <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+            floodData.riskLevel === 'severe' ? 'bg-flood-danger/20 text-flood-danger' :
+            floodData.riskLevel === 'high' ? 'bg-flood-warning/20 text-flood-warning' :
+            floodData.riskLevel === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+            'bg-flood-safe/20 text-flood-safe'
+          }`}>
+            {floodData.riskLevel.toUpperCase()}
+          </div>
+        </div>
+        
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium">Predicted Date:</span>
-          <span className="font-semibold">{formattedDate}</span>
+          <div>
+            <span className="font-semibold">{formattedDate}</span>
+            <span className="text-xs text-muted-foreground ml-2">({daysUntil} days)</span>
+          </div>
         </div>
         
         <div>
           <div className="flex items-center justify-between mb-1">
-            <span className="text-sm font-medium">Probability:</span>
+            <span className="text-sm font-medium">Flood Probability:</span>
             <span className={`font-semibold ${probabilityColor}`}>{predictedFlood.probabilityPercentage}%</span>
           </div>
           <div className="w-full bg-muted rounded-full h-2.5">
@@ -76,7 +93,7 @@ const PredictionCard: React.FC<PredictionCardProps> = ({ floodData }) => {
         
         <div className="pt-2 border-t">
           <p className="text-xs text-muted-foreground">
-            These predictions are based on historical data, current weather conditions, and machine learning models.
+            Prediction based on historical patterns, weather forecasts, and current river levels.
           </p>
         </div>
       </div>
