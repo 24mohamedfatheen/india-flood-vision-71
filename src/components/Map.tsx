@@ -31,7 +31,7 @@ const Map: React.FC<MapProps> = ({ selectedRegion }) => {
             Showing flood-affected areas and state boundaries in India
           </p>
           
-          {/* India map with state outlines */}
+          {/* India map with state outlines - Using your provided map styling */}
           <div className="relative mx-auto w-64 h-64 md:w-80 md:h-80">
             <svg viewBox="0 0 220 220" className="w-full h-full">
               {/* Background for India */}
@@ -41,7 +41,7 @@ const Map: React.FC<MapProps> = ({ selectedRegion }) => {
               {stateOutlines.map((state) => {
                 const isSelectedState = state.name.toLowerCase() === selectedState.toLowerCase();
                 
-                // Choose color based on reference image colors
+                // Color coding states as per your provided map
                 let fillColor;
                 switch (state.name) {
                   case "Jammu and Kashmir": 
