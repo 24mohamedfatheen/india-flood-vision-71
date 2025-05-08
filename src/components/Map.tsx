@@ -33,27 +33,122 @@ const Map: React.FC<MapProps> = ({ selectedRegion }) => {
           
           {/* India map with state outlines */}
           <div className="relative mx-auto w-64 h-64 md:w-80 md:h-80">
-            <svg viewBox="0 0 200 200" className="w-full h-full">
-              {/* Simplified India outline */}
-              <path 
-                d="M110,20 C120,20 130,25 140,35 C150,45 155,60 160,70 C165,80 170,85 175,95 C180,105 185,115 185,125 C185,135 180,145 175,155 C170,165 160,170 150,175 C140,180 130,180 120,180 C110,180 100,175 90,170 C80,165 75,160 70,150 C65,140 60,130 55,120 C50,110 45,100 40,90 C35,80 30,70 30,60 C30,50 35,40 45,35 C55,30 65,25 75,25 C85,25 100,20 110,20 Z" 
-                fill="#E3F2FD"
-                stroke="#2196F3"
-                strokeWidth="1"
-              />
-              
+            <svg viewBox="0 0 220 220" className="w-full h-full">
+              {/* Background for India */}
+              <rect x="0" y="0" width="220" height="220" fill="#f5f5f5" />
+
               {/* Render state outlines */}
               {stateOutlines.map((state) => {
                 const isSelectedState = state.name.toLowerCase() === selectedState.toLowerCase();
+                
+                // Choose color based on reference image colors
+                let fillColor;
+                switch (state.name) {
+                  case "Jammu and Kashmir": 
+                    fillColor = "#FF5252"; // Red
+                    break;
+                  case "Himachal Pradesh":
+                    fillColor = "#FFD740"; // Yellow
+                    break;
+                  case "Punjab": 
+                    fillColor = "#8BC34A"; // Light Green
+                    break;
+                  case "Uttarakhand":
+                    fillColor = "#B39DDB"; // Light Purple
+                    break;
+                  case "Haryana":
+                    fillColor = "#90CAF9"; // Light Blue
+                    break;
+                  case "Rajasthan":
+                    fillColor = "#EF9A9A"; // Light Red/Pink
+                    break;
+                  case "Uttar Pradesh":
+                    fillColor = "#E6EE9C"; // Light Yellow-Green
+                    break;
+                  case "Bihar":
+                    fillColor = "#C5E1A5"; // Very Light Green
+                    break;
+                  case "Sikkim":
+                    fillColor = "#FFE082"; // Light Yellow
+                    break;
+                  case "Arunachal Pradesh":
+                    fillColor = "#FF8A65"; // Orange-Red
+                    break;
+                  case "Assam":
+                    fillColor = "#4FC3F7"; // Blue
+                    break;
+                  case "West Bengal":
+                    fillColor = "#FF80AB"; // Pink
+                    break;
+                  case "Gujarat":
+                    fillColor = "#FFF59D"; // Very Light Yellow
+                    break;
+                  case "Madhya Pradesh":
+                    fillColor = "#9575CD"; // Purple
+                    break;
+                  case "Jharkhand":
+                    fillColor = "#AED581"; // Green
+                    break;
+                  case "Chhattisgarh":
+                    fillColor = "#4DB6AC"; // Teal
+                    break;
+                  case "Odisha":
+                    fillColor = "#64B5F6"; // Blue
+                    break;
+                  case "Maharashtra":
+                    fillColor = "#BA68C8"; // Purple
+                    break;
+                  case "Telangana":
+                    fillColor = "#FFB74D"; // Orange
+                    break;
+                  case "Andhra Pradesh":
+                    fillColor = "#F48FB1"; // Pink
+                    break;
+                  case "Karnataka":
+                    fillColor = "#81C784"; // Green
+                    break;
+                  case "Goa":
+                    fillColor = "#4DD0E1"; // Light Blue
+                    break;
+                  case "Kerala":
+                    fillColor = "#7CB342"; // Green
+                    break;
+                  case "Tamil Nadu":
+                    fillColor = "#FF8A65"; // Orange-Red
+                    break;
+                  case "Meghalaya":
+                    fillColor = "#FFAB00"; // Amber
+                    break;
+                  case "Tripura":
+                    fillColor = "#B2FF59"; // Light Green
+                    break;
+                  case "Manipur":
+                    fillColor = "#69F0AE"; // Green
+                    break;
+                  case "Mizoram":
+                    fillColor = "#18FFFF"; // Cyan
+                    break;
+                  case "Nagaland":
+                    fillColor = "#FF9E80"; // Deep Orange
+                    break;
+                  case "Delhi":
+                    fillColor = "#CFD8DC"; // Blue Grey
+                    break;
+                  default:
+                    fillColor = "#E0E0E0"; // Light Grey
+                }
+                
                 return (
                   <path
                     key={state.name}
                     d={state.path}
-                    fill={isSelectedState ? "#BBDEFB" : "transparent"}
-                    stroke={isSelectedState ? "#1565C0" : "#90CAF9"}
+                    fill={fillColor}
+                    stroke={isSelectedState ? "#1565C0" : "#555555"}
                     strokeWidth={isSelectedState ? 2 : 0.5}
                     className={isSelectedState ? "animate-pulse-opacity" : ""}
-                  />
+                  >
+                    <title>{state.name}</title>
+                  </path>
                 );
               })}
               
@@ -99,11 +194,21 @@ const Map: React.FC<MapProps> = ({ selectedRegion }) => {
                   </g>
                 );
               })}
+              
+              {/* Add legend for the states */}
+              <foreignObject x="5" y="155" width="50" height="60">
+                <div className="text-xs bg-white/80 p-1 rounded">
+                  <div className="font-bold">States:</div>
+                  <div className="text-[8px] mt-1">
+                    Hover over each state to see its name
+                  </div>
+                </div>
+              </foreignObject>
             </svg>
           </div>
           
           <p className="text-xs text-muted-foreground mt-4">
-            * Dots represent current flood-affected areas colored by risk level
+            * Colored regions represent Indian states, dots represent current flood-affected areas
           </p>
         </div>
       </div>
