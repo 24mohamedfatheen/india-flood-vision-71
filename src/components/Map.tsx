@@ -12,7 +12,8 @@ interface MapProps {
   selectedRegion: string;
 }
 
-const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN || "pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJja2V5MGkyd28waWRqMnJvZXA3bjA3M3JpIn0._example_mapbox_token"; 
+// Fix: Use import.meta.env instead of process.env for Vite
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || "pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJja2V5MGkyd28waWRqMnJvZXA3bjA3M3JpIn0._example_mapbox_token";
 // Note: This is a placeholder. In production, NEVER hardcode API tokens.
 // Instead, use environment variables or another secure method.
 

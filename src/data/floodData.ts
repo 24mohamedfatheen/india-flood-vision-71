@@ -24,7 +24,7 @@ export type FloodData = {
     source?: {
       name: string;
       url: string;
-      type: 'IMD' | 'CWC' | 'CMWSSB' | 'NDMA' | 'SDMA' | 'other';
+      type: AgencyType;
     };
   };
   // New field for damage estimates
@@ -45,7 +45,7 @@ export type FloodData = {
     source: {
       name: string;
       url: string;
-      type: 'CWC' | 'SDMA' | 'other';
+      type: AgencyType;
     };
   };
   // New field for active warnings
@@ -563,3 +563,5 @@ export const getActiveWarnings = (region: string) => {
   const floodInfo = getFloodDataForRegion(region);
   return floodInfo?.activeWarnings || [];
 };
+
+export type AgencyType = "IMD" | "CWC" | "NDMA" | "SDMA" | "CMWSSB" | "other";

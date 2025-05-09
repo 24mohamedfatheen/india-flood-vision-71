@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ArrowUp, ArrowDown, Minus, ExternalLink, AlertCircle, Droplet, Home, Wheat, Building, Clock, AlertTriangle, Info } from 'lucide-react';
 import { FloodData } from '../data/floodData';
@@ -121,7 +120,7 @@ const PredictionCard: React.FC<PredictionCardProps> = ({ floodData }) => {
       
       {/* Source-based prediction alert */}
       {predictedFlood.source && (
-        <Alert variant={getAlertVariant()}>
+        <Alert variant="default" className="bg-yellow-50 border-yellow-200 text-yellow-800 mb-4">
           <AlertTitle className="text-sm font-semibold">
             {predictedFlood.predictedEvent || `Flood Warning for ${floodData.region.charAt(0).toUpperCase() + floodData.region.slice(1)}`}
           </AlertTitle>
