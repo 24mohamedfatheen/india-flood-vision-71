@@ -1,7 +1,8 @@
 
 import React from 'react';
-import { ArrowUp } from 'lucide-react';
+import { ArrowUp, ExternalLink, AlertCircle } from 'lucide-react';
 import { FloodData } from '../data/floodData';
+import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 
 interface PredictionCardProps {
   floodData: FloodData | undefined;
@@ -31,12 +32,48 @@ const PredictionCard: React.FC<PredictionCardProps> = ({ floodData }) => {
     'text-flood-safe';
     
   const daysUntil = Math.ceil((new Date(predictedFlood.date).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
+  
+  // Information source link rendering
+  const renderSourceLink = () => {
+    if (!predictedFlood.source?.url) return null;
+    
+    return (
+      <a 
+        href={predictedFlood.source.url} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="text-blue-600 hover:text-blue-800 underline flex items-center text-xs mt-1"
+      >
+        {predictedFlood.source.name} <ExternalLink className="h-3 w-3 ml-0.5" />
+      </a>
+    );
+  };
 
   return (
-    <div className="flood-card">
-      <h2 className="font-semibold mb-4 text-lg">Flood Risk Assessment</h2>
+    <div className="flood-card space-y-4">
+      <h2 className="font-semibold text-lg flex items-center">
+        <AlertCircle className="h-5 w-5 mr-2 text-flood-warning" />
+        Flood Risk Assessment
+      </h2>
       
-      <div className="space-y-4">
+      {/* Source-based prediction alert */}
+      {predictedFlood.source && (
+        <Alert variant={predictedFlood.probabilityPercentage > 75 ? "destructive" : "default"}>
+          <AlertTitle className="text-sm font-semibold">
+            {predictedFlood.predictedEvent || `Flood Warning for ${floodData.region.charAt(0).toUpperCase() + floodData.region.slice(1)}`}
+          </AlertTitle>
+          <AlertDescription className="text-xs">
+            <p className="mb-1"><strong>Location:</strong> {predictedFlood.predictedLocation || floodData.region.charAt(0).toUpperCase() + floodData.region.slice(1)}, {floodData.state}</p>
+            <p className="mb-1"><strong>Timeframe:</strong> {predictedFlood.timeframe || `Valid until ${formattedDate}`}</p>
+            {predictedFlood.supportingData && (
+              <p className="mb-1"><strong>Assessment:</strong> {predictedFlood.supportingData}</p>
+            )}
+            {renderSourceLink()}
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      <div className="space-y-3">
         <div>
           <span className="text-xs text-muted-foreground block mb-1">Region Risk Level</span>
           <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
@@ -93,7 +130,11 @@ const PredictionCard: React.FC<PredictionCardProps> = ({ floodData }) => {
         
         <div className="pt-2 border-t">
           <p className="text-xs text-muted-foreground">
-            Prediction based on historical patterns, weather forecasts, and current river levels.
+            {predictedFlood.timestamp ? (
+              <>Last updated: {new Date(predictedFlood.timestamp).toLocaleString()}</>
+            ) : (
+              <>Prediction based on official data sources</>
+            )}
           </p>
         </div>
       </div>

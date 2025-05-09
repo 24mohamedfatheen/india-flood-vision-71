@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { floodData, getFloodDataForRegion, regions } from '../data/floodData';
 import { stateOutlines } from '../data/stateOutlines';
+import { ExternalLink } from 'lucide-react';
 
 interface MapProps {
   selectedRegion: string;
@@ -12,6 +13,7 @@ const Map: React.FC<MapProps> = ({ selectedRegion }) => {
   const [mapMessage, setMapMessage] = useState<string>('Interactive map loading...');
   const selectedFloodData = getFloodDataForRegion(selectedRegion);
   const selectedState = selectedFloodData?.state || '';
+  const [hoveredRegion, setHoveredRegion] = useState<string | null>(null);
 
   // For a real application, you would integrate with a map API like MapBox, Google Maps, or Leaflet
   useEffect(() => {
@@ -21,6 +23,14 @@ const Map: React.FC<MapProps> = ({ selectedRegion }) => {
       setMapMessage(`Map data not available for the selected region`);
     }
   }, [selectedRegion, selectedFloodData]);
+
+  const handleDotHover = (region: string) => {
+    setHoveredRegion(region);
+  };
+
+  const handleDotLeave = () => {
+    setHoveredRegion(null);
+  };
 
   return (
     <div className="map-container mb-6 border rounded-lg overflow-hidden h-[400px] relative">
@@ -60,30 +70,54 @@ const Map: React.FC<MapProps> = ({ selectedRegion }) => {
                   
                   // Highlight selected region
                   const isSelected = data.region === selectedRegion;
-                  const dotSize = isSelected ? 16 : 12;
+                  const isHovered = data.region === hoveredRegion;
+                  const dotSize = isSelected ? 16 : isHovered ? 14 : 12;
                   const pulseAnimation = isSelected ? 'animate-pulse-opacity' : '';
                   
+                  // Add source information to tooltip for selected or hovered region
+                  const sourceInfo = data.predictedFlood?.source;
+                  
                   return (
-                    <g key={data.id} className={pulseAnimation}>
+                    <g 
+                      key={data.id} 
+                      className={pulseAnimation}
+                      onMouseEnter={() => handleDotHover(data.region)}
+                      onMouseLeave={handleDotLeave}
+                      style={{ pointerEvents: 'all', cursor: 'pointer' }}
+                    >
                       <circle 
                         cx={x} 
                         cy={y} 
                         r={dotSize} 
                         fill={dotColor}
-                        stroke={isSelected ? '#000' : 'none'}
-                        strokeWidth={isSelected ? 2 : 0}
+                        stroke={isSelected || isHovered ? '#000' : 'none'}
+                        strokeWidth={isSelected || isHovered ? 2 : 0}
                       />
-                      {isSelected && (
-                        <text 
-                          x={x} 
-                          y={y - 20} 
-                          textAnchor="middle" 
-                          fill="#000" 
-                          fontSize="16"
-                          fontWeight="bold"
-                        >
-                          {data.region.charAt(0).toUpperCase() + data.region.slice(1)}
-                        </text>
+                      {(isSelected || isHovered) && (
+                        <>
+                          <text 
+                            x={x} 
+                            y={y - 20} 
+                            textAnchor="middle" 
+                            fill="#000" 
+                            fontSize="16"
+                            fontWeight="bold"
+                          >
+                            {data.region.charAt(0).toUpperCase() + data.region.slice(1)}
+                          </text>
+                          {sourceInfo && (
+                            <text 
+                              x={x} 
+                              y={y - 36} 
+                              textAnchor="middle" 
+                              fill="#444" 
+                              fontSize="10"
+                              className="font-light"
+                            >
+                              Source: {sourceInfo.name}
+                            </text>
+                          )}
+                        </>
                       )}
                     </g>
                   );
@@ -92,7 +126,7 @@ const Map: React.FC<MapProps> = ({ selectedRegion }) => {
             </div>
           </div>
           
-          <div className="flex items-center justify-center mt-4 text-xs">
+          <div className="flex items-center justify-center mt-4 text-xs flex-wrap gap-2">
             <div className="flex items-center mr-4">
               <span className="inline-block w-3 h-3 rounded-full bg-green-500 mr-2"></span>
               <span>Low Risk</span>
@@ -109,6 +143,10 @@ const Map: React.FC<MapProps> = ({ selectedRegion }) => {
               <span className="inline-block w-3 h-3 rounded-full bg-red-500 mr-2"></span>
               <span>Severe Risk</span>
             </div>
+          </div>
+          
+          <div className="mt-3 text-xs text-muted-foreground">
+            <p>Flood predictions based on data from <a href="https://mausam.imd.gov.in/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline inline-flex items-center">IMD <ExternalLink className="h-3 w-3 ml-0.5" /></a> and <a href="https://chennaimetrowater.tn.gov.in/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline inline-flex items-center">CMWSSB <ExternalLink className="h-3 w-3 ml-0.5" /></a></p>
           </div>
         </div>
       </div>
