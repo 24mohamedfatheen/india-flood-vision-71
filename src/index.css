@@ -1,70 +1,82 @@
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* Import Leaflet CSS */
+@import 'leaflet/dist/leaflet.css';
 
 @layer base {
   :root {
-    --background: 216 33% 97%;
-    --foreground: 220 40% 15%;
+    --background: 0 0% 100%;
+    --foreground: 222.2 47.4% 11.2%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 220 40% 15%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 40% 15%;
+    --popover-foreground: 222.2 47.4% 11.2%;
 
-    --primary: 201 100% 36%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 47.4% 11.2%;
+
+    --primary: 222.2 47.4% 11.2%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 187 56% 45%;
-    --secondary-foreground: 220 40% 15%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
 
-    --muted: 210 20% 92%;
-    --muted-foreground: 220 15% 45%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
 
-    --accent: 187 56% 85%;
-    --accent-foreground: 220 40% 15%;
-
-    --destructive: 0 84% 60%;
+    --destructive: 0 100% 50%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 201 100% 36%;
+    --ring: 215 20.2% 65.1%;
 
     --radius: 0.5rem;
-
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5% 26%;
-    --sidebar-primary: 240 6% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 5% 96%;
-    --sidebar-accent-foreground: 240 6% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217 91% 60%;
+    
+    /* Flood warning colors */
+    --flood-warning: 38 92% 50%;
+    --flood-danger: 0 84% 60%;
+    --flood-info: 210 100% 56%;
+    --flood-success: 130 50% 54%;
   }
 
   .dark {
-    --background: 220 40% 10%;
-    --foreground: 210 40% 98%;
-    --card: 220 40% 12%;
-    --card-foreground: 210 40% 98%;
-    --popover: 220 40% 12%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 201 100% 50%;
-    --primary-foreground: 220 40% 15%;
-    --secondary: 187 56% 40%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 220 30% 20%;
-    --muted-foreground: 210 20% 70%;
-    --accent: 220 30% 20%;
+    --background: 224 71% 4%;
+    --foreground: 213 31% 91%;
+
+    --muted: 223 47% 11%;
+    --muted-foreground: 215.4 16.3% 56.9%;
+
+    --accent: 216 34% 17%;
     --accent-foreground: 210 40% 98%;
-    --destructive: 0 70% 50%;
+
+    --popover: 224 71% 4%;
+    --popover-foreground: 215 20.2% 65.1%;
+
+    --border: 216 34% 17%;
+    --input: 216 34% 17%;
+
+    --card: 224 71% 4%;
+    --card-foreground: 213 31% 91%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 1.2%;
+
+    --secondary: 222.2 47.4% 11.2%;
+    --secondary-foreground: 210 40% 98%;
+
+    --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
-    --border: 220 30% 20%;
-    --input: 220 30% 20%;
-    --ring: 201 100% 50%;
+
+    --ring: 216 34% 17%;
+
+    --radius: 0.5rem;
   }
 }
 
@@ -72,93 +84,61 @@
   * {
     @apply border-border;
   }
-
   body {
-    @apply bg-background text-foreground bg-raindrop-pattern;
-    background-color: #E3F2FD; /* Light blue background that evokes water */
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
-@layer components {
-  .map-container {
-    @apply relative h-[600px] md:h-[700px] lg:h-[750px] w-full rounded-lg overflow-hidden border border-border shadow-sm transition-all duration-300;
-  }
-  
-  .flood-card {
-    @apply bg-white rounded-lg border border-border p-4 shadow-sm transition-all duration-300 hover:shadow-md;
-  }
-  
-  .data-value {
-    @apply text-2xl font-bold text-primary;
-  }
-  
-  .data-label {
-    @apply text-sm text-muted-foreground;
-  }
-  
-  .section-title {
-    @apply text-lg font-semibold text-foreground mb-4;
-  }
-  
-  .bg-raindrop-pattern {
-    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%2387b7eb' fill-opacity='0.15'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-  }
-  
-  .zoom-controls {
-    @apply absolute right-4 top-4 flex flex-col gap-2 z-10;
-  }
-  
-  .flood-area {
-    @apply fill-flood-danger/20 stroke-flood-danger stroke-2;
-  }
-  
-  .animate-pulse-opacity {
-    animation: pulse-opacity 2s ease-in-out infinite;
-  }
-  
-  @keyframes pulse-opacity {
-    0%, 100% { opacity: 0.6; }
-    50% { opacity: 0.9; }
-  }
-  
-  .damage-stat {
-    @apply flex items-center justify-between text-sm border-b border-border pb-1 mb-1;
-  }
-  
-  .damage-value {
-    @apply font-semibold text-flood-danger;
-  }
+/* Custom styles for the map components */
 
-  /* New classes for data sources */
-  .data-source-badge {
-    @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-1;
+.timestamp-badge {
+  @apply inline-flex items-center text-xs px-2 py-1 rounded bg-gray-50 text-gray-700;
+}
+
+.data-source-badge {
+  @apply px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs hover:bg-blue-100 transition-colors;
+}
+
+/* Map specific styles */
+.map-container {
+  min-height: 400px;
+  position: relative;
+}
+
+.zoom-controls {
+  @apply absolute bottom-16 right-4 z-10 flex flex-col space-y-2;
+}
+
+.map-tooltip {
+  min-width: 200px;
+  padding: 8px;
+}
+
+/* Add animation for severe risk markers */
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
   }
-  
-  .river-level-gauge {
-    @apply relative h-20 w-12 mx-auto bg-gradient-to-t from-blue-100 to-blue-50 border border-blue-200 rounded overflow-hidden;
-  }
-  
-  .river-level-indicator {
-    @apply absolute bottom-0 left-0 right-0 bg-blue-500 transition-all duration-300;
-  }
-  
-  .river-level-danger {
-    @apply absolute w-full h-[2px] bg-red-500 z-10;
-  }
-  
-  .river-level-warning {
-    @apply absolute w-full h-[2px] bg-yellow-500 z-10;
-  }
-  
-  .data-source-link {
-    @apply text-xs text-blue-600 hover:text-blue-800 underline flex items-center gap-1;
-  }
-  
-  .timestamp-badge {
-    @apply text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded inline-flex items-center;
-  }
-  
-  .map-tooltip {
-    @apply bg-white/90 backdrop-blur-sm px-3 py-2 rounded shadow-lg border border-blue-100 text-xs max-w-xs;
+  50% {
+    opacity: 0.7;
   }
 }
+
+/* Leaflet specific styles */
+.leaflet-popup-content-wrapper {
+  @apply rounded-lg shadow-lg;
+}
+
+.leaflet-popup-content {
+  @apply p-2;
+}
+
+.leaflet-container {
+  @apply font-sans;
+}
+

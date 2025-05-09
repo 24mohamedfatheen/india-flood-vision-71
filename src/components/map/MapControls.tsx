@@ -22,7 +22,7 @@ const MapControls: React.FC<MapControlsProps> = ({
               <Button 
                 variant="outline" 
                 size="icon" 
-                onClick={() => toggleLayerVisibility('flood-areas-fill')}
+                onClick={() => toggleLayerVisibility('floodAreas')}
                 className="bg-white/90 hover:bg-white mb-2"
               >
                 <Layers className="h-4 w-4" />
@@ -36,7 +36,7 @@ const MapControls: React.FC<MapControlsProps> = ({
       </div>
       
       {/* Zoom controls */}
-      <div className="zoom-controls">
+      <div className="absolute bottom-16 right-4 z-10 flex flex-col space-y-2">
         <Button variant="outline" size="icon" onClick={handleZoomIn} className="bg-white/90 hover:bg-white">
           <ZoomIn className="h-4 w-4" />
         </Button>

@@ -1,111 +1,58 @@
 
 import React, { useEffect, useRef, useState } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { floodData, getFloodDataForRegion } from '../../data/floodData';
 import { useToast } from '../../hooks/use-toast';
 import MapControls from './MapControls';
 import MapMarker from './MapMarker';
 import MapLegend from './MapLegend';
 import MapAttribution from './MapAttribution';
-import MapPlaceholder from './MapPlaceholder';
 import { createFloodAreaPolygon } from './MapUtils';
 import { MapProps } from './types';
 
-// Fix: Use import.meta.env instead of process.env for Vite
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || "pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJja2V5MGkyd28waWRqMnJvZXA3bjA3M3JpIn0._example_mapbox_token";
-// Note: This is a placeholder. In production, NEVER hardcode API tokens.
-// Instead, use environment variables or another secure method.
+// Fix Leaflet icon issues with webpack
+// This is needed because Leaflet's default icons reference image files that aren't properly bundled
+useEffect(() => {
+  // Only run this once when the component mounts
+  delete (L.Icon.Default.prototype as any)._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+    iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+  });
+}, []);
 
-const Map: React.FC<MapProps> = ({ selectedRegion }) => {
+const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const popupRef = useRef<mapboxgl.Popup | null>(null);
+  const map = useRef<L.Map | null>(null);
+  const popupRef = useRef<L.Popup | null>(null);
+  const markersRef = useRef<L.Marker[]>([]);
+  const layersRef = useRef<{[key: string]: L.Layer}>({});
   const [mapLoaded, setMapLoaded] = useState<boolean>(false);
-  const [mapLayers, setMapLayers] = useState<string[]>([]);
   const [lastUpdate, setLastUpdate] = useState<string>('');
   const selectedFloodData = getFloodDataForRegion(selectedRegion);
   const { toast } = useToast();
-  const [showMapboxTokenWarning, setShowMapboxTokenWarning] = useState<boolean>(
-    MAPBOX_TOKEN.includes("_example_mapbox_token")
-  );
 
   // Initialize map
   useEffect(() => {
     if (!mapContainer.current) return;
-    if (showMapboxTokenWarning) return; // Don't initialize if token is not valid
-
-    mapboxgl.accessToken = MAPBOX_TOKEN;
     
     try {
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/light-v11', // Light style for better overlay visibility
-        center: [78.9629, 20.5937], // Center of India
-        zoom: 4,
-        projection: 'mercator',
-      });
-
-      // Add navigation controls
-      map.current.addControl(
-        new mapboxgl.NavigationControl(),
-        'top-right'
-      );
-
-      // On map load event
-      map.current.on('load', () => {
-        setMapLoaded(true);
-        
-        // Add source for flood affected areas
-        map.current.addSource('flood-areas', {
-          type: 'geojson',
-          data: {
-            type: 'FeatureCollection',
-            features: []
-          }
-        });
-
-        // Add layer for flood affected areas
-        map.current.addLayer({
-          id: 'flood-areas-fill',
-          type: 'fill',
-          source: 'flood-areas',
-          paint: {
-            'fill-color': [
-              'match',
-              ['get', 'risk_level'],
-              'severe', '#F44336',
-              'high', '#FF9800',
-              'medium', '#FFC107',
-              'low', '#4CAF50',
-              '#4CAF50'
-            ],
-            'fill-opacity': 0.3
-          }
-        });
-
-        // Add layer for flood area outlines
-        map.current.addLayer({
-          id: 'flood-areas-line',
-          type: 'line',
-          source: 'flood-areas',
-          paint: {
-            'line-color': [
-              'match',
-              ['get', 'risk_level'],
-              'severe', '#D32F2F',
-              'high', '#F57C00',
-              'medium', '#FFA000',
-              'low', '#388E3C',
-              '#388E3C'
-            ],
-            'line-width': 2
-          }
-        });
-        
-        setMapLayers(['flood-areas-fill', 'flood-areas-line']);
-      });
-
+      // Create the Leaflet map
+      map.current = L.map(mapContainer.current).setView([20.5937, 78.9629], 5);
+      
+      // Add the OpenStreetMap tile layer
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map.current);
+      
+      // Add flood areas layer group
+      layersRef.current['floodAreas'] = L.layerGroup().addTo(map.current);
+      
+      setMapLoaded(true);
+      
       const now = new Date();
       setLastUpdate(now.toLocaleString());
       
@@ -122,42 +69,67 @@ const Map: React.FC<MapProps> = ({ selectedRegion }) => {
         variant: "destructive"
       });
     }
-  }, [showMapboxTokenWarning, toast]);
+  }, [toast]);
 
   // Update map when selected region changes
   useEffect(() => {
     if (!mapLoaded || !map.current || !selectedFloodData) return;
 
     // Fly to the selected region
-    map.current.flyTo({
-      center: [selectedFloodData.coordinates[1], selectedFloodData.coordinates[0]],
-      zoom: 6,
-      essential: true
-    });
+    map.current.setView(
+      [selectedFloodData.coordinates[0], selectedFloodData.coordinates[1]],
+      7,
+      { animate: true, duration: 1 }
+    );
 
-    // Update the flood affected areas source
+    // Update the flood affected areas
     updateFloodAreas();
 
   }, [selectedRegion, mapLoaded, selectedFloodData]);
 
   // Update flood areas on map
   const updateFloodAreas = () => {
-    if (!map.current) return;
+    if (!map.current || !layersRef.current['floodAreas']) return;
+    
+    // Clear existing flood areas
+    const floodAreasLayer = layersRef.current['floodAreas'] as L.LayerGroup;
+    floodAreasLayer.clearLayers();
     
     // Generate flood area features
-    const features = floodData
-      .filter(data => data.riskLevel !== 'low') // Only show medium, high, and severe risk areas
-      .map(createFloodAreaPolygon)
-      .filter(Boolean);
+    const filteredFloodData = floodData.filter(data => data.riskLevel !== 'low');
     
-    // Update the source data
-    const source = map.current.getSource('flood-areas') as mapboxgl.GeoJSONSource;
-    if (source) {
-      source.setData({
-        type: 'FeatureCollection',
-        features: features as GeoJSON.Feature[]
-      });
-    }
+    filteredFloodData.forEach(data => {
+      const geoJsonPolygon = createFloodAreaPolygon(data);
+      if (geoJsonPolygon) {
+        // Create Leaflet polygon from GeoJSON
+        const color = 
+          data.riskLevel === 'severe' ? '#F44336' :
+          data.riskLevel === 'high' ? '#FF9800' :
+          data.riskLevel === 'medium' ? '#FFC107' : 
+          '#4CAF50';
+        
+        const polygon = L.geoJSON(geoJsonPolygon as any, {
+          style: {
+            color: color,
+            weight: 2,
+            opacity: 1,
+            fillColor: color,
+            fillOpacity: 0.3
+          }
+        });
+        
+        // Add popup with information
+        polygon.bindPopup(`
+          <div class="font-bold">${data.region}, ${data.state}</div>
+          <div>Risk Level: ${data.riskLevel.toUpperCase()}</div>
+          <div>Area: ${data.affectedArea} km²</div>
+          <div>Population: ${data.populationAffected.toLocaleString()}</div>
+        `);
+        
+        // Add to layer group
+        polygon.addTo(floodAreasLayer);
+      }
+    });
   };
 
   // Handle zoom controls
@@ -173,64 +145,55 @@ const Map: React.FC<MapProps> = ({ selectedRegion }) => {
 
   const handleResetView = () => {
     if (!map.current) return;
-    map.current.flyTo({
-      center: [78.9629, 20.5937], // Center of India
-      zoom: 4,
-      essential: true
-    });
+    map.current.setView([20.5937, 78.9629], 5, { animate: true });
   };
 
   // Toggle layer visibility
   const toggleLayerVisibility = (layerId: string) => {
-    if (!map.current) return;
+    if (!map.current || !layersRef.current[layerId]) return;
     
-    const visibility = map.current.getLayoutProperty(layerId, 'visibility');
+    const layer = layersRef.current[layerId];
+    const isVisible = map.current.hasLayer(layer);
     
-    // Toggle layer visibility
-    if (visibility === 'visible') {
-      map.current.setLayoutProperty(layerId, 'visibility', 'none');
+    if (isVisible) {
+      map.current.removeLayer(layer);
     } else {
-      map.current.setLayoutProperty(layerId, 'visibility', 'visible');
+      map.current.addLayer(layer);
     }
   };
 
   return (
     <div className="map-container mb-6 border rounded-lg overflow-hidden relative">
-      <MapPlaceholder showMapboxTokenWarning={showMapboxTokenWarning} />
+      <div
+        ref={mapContainer}
+        className="absolute inset-0 w-full h-full"
+        style={{ minHeight: "400px" }}
+      />
       
-      {!showMapboxTokenWarning && (
-        <>
-          <div
-            ref={mapContainer}
-            className="absolute inset-0 w-full h-full"
-          />
-          
-          <MapAttribution lastUpdate={lastUpdate} />
-          
-          <MapControls 
-            map={map.current}
-            handleZoomIn={handleZoomIn}
-            handleZoomOut={handleZoomOut}
-            handleResetView={handleResetView}
-            toggleLayerVisibility={toggleLayerVisibility}
-          />
-          
-          <MapLegend />
-          
-          {/* Render map markers once the map is loaded */}
-          {mapLoaded && map.current && floodData.map(data => (
-            <MapMarker 
-              key={data.id}
-              data={data}
-              map={map.current!}
-              selectedRegion={selectedRegion}
-              popupRef={popupRef}
-            />
-          ))}
-        </>
-      )}
+      <MapAttribution lastUpdate={lastUpdate} />
+      
+      <MapControls 
+        map={map.current}
+        handleZoomIn={handleZoomIn}
+        handleZoomOut={handleZoomOut}
+        handleResetView={handleResetView}
+        toggleLayerVisibility={toggleLayerVisibility}
+      />
+      
+      <MapLegend />
+      
+      {/* Render map markers once the map is loaded */}
+      {mapLoaded && map.current && floodData.map(data => (
+        <MapMarker 
+          key={data.id}
+          data={data}
+          map={map.current!}
+          selectedRegion={selectedRegion}
+          popupRef={popupRef}
+        />
+      ))}
     </div>
   );
 };
 
-export default Map;
+export default MapComponent;

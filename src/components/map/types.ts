@@ -1,6 +1,6 @@
 
 import { FloodData } from '../../data/floodData';
-import mapboxgl from 'mapbox-gl';
+import L from 'leaflet';
 
 export interface MapProps {
   selectedRegion: string;
@@ -8,13 +8,13 @@ export interface MapProps {
 
 export interface MapMarkerProps {
   data: FloodData;
-  map: mapboxgl.Map;
+  map: L.Map;
   selectedRegion: string;
-  popupRef: React.MutableRefObject<mapboxgl.Popup | null>;
+  popupRef: React.MutableRefObject<L.Popup | null>;
 }
 
 export interface MapControlsProps {
-  map: mapboxgl.Map | null;
+  map: L.Map | null;
   handleZoomIn: () => void;
   handleZoomOut: () => void;
   handleResetView: () => void;
@@ -24,7 +24,7 @@ export interface MapControlsProps {
 export interface MapLegendProps {}
 
 export interface MapPlaceholderProps {
-  showMapboxTokenWarning: boolean;
+  showMapboxTokenWarning?: boolean;
 }
 
 export interface MapAttributionProps {

@@ -1,18 +1,12 @@
 
-import React from 'react';
-import mapboxgl from 'mapbox-gl';
+import React, { useEffect } from 'react';
+import L from 'leaflet';
 import { MapMarkerProps } from './types';
 
 const MapMarker = ({ data, map, selectedRegion, popupRef }: MapMarkerProps) => {
-  React.useEffect(() => {
+  useEffect(() => {
     if (!map) return;
 
-    // Create custom marker element
-    const markerEl = document.createElement('div');
-    markerEl.className = 'flex items-center justify-center';
-    markerEl.style.width = '24px';
-    markerEl.style.height = '24px';
-    
     // Set marker color based on risk level
     const color = 
       data.riskLevel === 'severe' ? '#F44336' :
@@ -20,26 +14,25 @@ const MapMarker = ({ data, map, selectedRegion, popupRef }: MapMarkerProps) => {
       data.riskLevel === 'medium' ? '#FFC107' : 
       '#4CAF50';
     
-    // Create marker icon
-    markerEl.innerHTML = `
-      <svg viewBox="0 0 24 24" width="24" height="24" stroke="${color}" stroke-width="3" fill="white" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-        <circle cx="12" cy="10" r="3"></circle>
-      </svg>
-    `;
-    
-    // Add pulse effect for severe and high risk locations
-    if (data.riskLevel === 'severe' || data.riskLevel === 'high') {
-      markerEl.classList.add('animate-pulse');
-    }
+    // Create custom marker icon
+    const customIcon = L.divIcon({
+      html: `
+        <div class="flood-marker" style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">
+          <svg viewBox="0 0 24 24" width="24" height="24" stroke="${color}" stroke-width="3" fill="white" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+          </svg>
+        </div>
+      `,
+      className: data.riskLevel === 'severe' || data.riskLevel === 'high' ? 'animate-pulse' : '',
+      iconSize: [24, 24],
+      iconAnchor: [12, 24]
+    });
     
     // Create and add marker
-    const marker = new mapboxgl.Marker({
-      element: markerEl,
-      anchor: 'bottom',
-    })
-    .setLngLat([data.coordinates[1], data.coordinates[0]])
-    .addTo(map);
+    const marker = L.marker([data.coordinates[0], data.coordinates[1]], {
+      icon: customIcon
+    }).addTo(map);
     
     // Create popup with info
     const popupContent = `
@@ -92,43 +85,39 @@ const MapMarker = ({ data, map, selectedRegion, popupRef }: MapMarkerProps) => {
       </div>
     `;
     
-    // Create popup but don't add to map yet (will be added on click)
-    const popup = new mapboxgl.Popup({
-      offset: 25,
+    // Add popup to marker
+    const popup = L.popup({
       closeButton: true,
       closeOnClick: true,
-      maxWidth: '300px'
-    }).setHTML(popupContent);
+      maxWidth: 300
+    }).setContent(popupContent);
     
     // Show popup on marker click
-    marker.getElement().addEventListener('click', () => {
-      // If there's an existing popup, remove it
+    marker.bindPopup(popup);
+    marker.on('click', () => {
       if (popupRef.current) {
-        popupRef.current.remove();
+        popupRef.current.close();
       }
-      
-      // Set and display the new popup
-      popup.addTo(map);
-      marker.setPopup(popup);
+      marker.openPopup();
       popupRef.current = popup;
-      
-      // If this is the selected region, highlight it
-      if (data.region === selectedRegion) {
-        marker.getElement().classList.add('ring-2', 'ring-blue-500');
-      }
     });
     
     // Highlight the marker if it's the selected region
     if (data.region === selectedRegion) {
-      marker.getElement().classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
+      const markerElement = marker.getElement();
+      if (markerElement) {
+        markerElement.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
+      }
+      // Open the popup if this is the selected region
+      marker.openPopup();
     }
 
     return () => {
-      marker.remove();
+      map.removeLayer(marker);
     };
   }, [data, map, selectedRegion, popupRef]);
 
-  return null; // This is a functional component that interacts with the map directly
+  return null; // This component doesn't render anything directly
 };
 
 export default MapMarker;
