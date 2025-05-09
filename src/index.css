@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -74,13 +75,13 @@
 
   body {
     @apply bg-background text-foreground bg-raindrop-pattern;
-    background-color: #e7f0ff;
+    background-color: #E3F2FD; /* Light blue background that evokes water */
   }
 }
 
 @layer components {
   .map-container {
-    @apply relative h-[500px] md:h-[600px] lg:h-[650px] w-full rounded-lg overflow-hidden border border-border shadow-sm transition-all duration-300;
+    @apply relative h-[600px] md:h-[700px] lg:h-[750px] w-full rounded-lg overflow-hidden border border-border shadow-sm transition-all duration-300;
   }
   
   .flood-card {
@@ -126,5 +127,38 @@
   
   .damage-value {
     @apply font-semibold text-flood-danger;
+  }
+
+  /* New classes for data sources */
+  .data-source-badge {
+    @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-1;
+  }
+  
+  .river-level-gauge {
+    @apply relative h-20 w-12 mx-auto bg-gradient-to-t from-blue-100 to-blue-50 border border-blue-200 rounded overflow-hidden;
+  }
+  
+  .river-level-indicator {
+    @apply absolute bottom-0 left-0 right-0 bg-blue-500 transition-all duration-300;
+  }
+  
+  .river-level-danger {
+    @apply absolute w-full h-[2px] bg-red-500 z-10;
+  }
+  
+  .river-level-warning {
+    @apply absolute w-full h-[2px] bg-yellow-500 z-10;
+  }
+  
+  .data-source-link {
+    @apply text-xs text-blue-600 hover:text-blue-800 underline flex items-center gap-1;
+  }
+  
+  .timestamp-badge {
+    @apply text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded inline-flex items-center;
+  }
+  
+  .map-tooltip {
+    @apply bg-white/90 backdrop-blur-sm px-3 py-2 rounded shadow-lg border border-blue-100 text-xs max-w-xs;
   }
 }

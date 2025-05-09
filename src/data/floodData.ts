@@ -24,7 +24,7 @@ export type FloodData = {
     source?: {
       name: string;
       url: string;
-      type: 'IMD' | 'CMWSSB' | 'other';
+      type: 'IMD' | 'CWC' | 'CMWSSB' | 'NDMA' | 'SDMA' | 'other';
     };
   };
   // New field for damage estimates
@@ -33,6 +33,31 @@ export type FloodData = {
     properties: number; // in crores of rupees
     infrastructure?: number; // in crores of rupees
   };
+  // New fields for river data
+  riverData?: {
+    name: string;
+    currentLevel: number; // in meters
+    dangerLevel: number; // in meters
+    warningLevel: number; // in meters
+    normalLevel: number; // in meters
+    trend: 'rising' | 'falling' | 'stable';
+    lastUpdated: string;
+    source: {
+      name: string;
+      url: string;
+      type: 'CWC' | 'SDMA' | 'other';
+    };
+  };
+  // New field for active warnings
+  activeWarnings?: {
+    type: 'alert' | 'warning' | 'severe' | 'watch';
+    issuedBy: string;
+    issuedAt: string;
+    validUntil: string;
+    message: string;
+    affectedAreas: string;
+    sourceUrl: string;
+  }[];
 };
 
 export type RegionOption = {
@@ -73,7 +98,7 @@ export const floodData: FloodData[] = [
     riverLevel: 5.2,
     coordinates: [19.0760, 72.8777],
     predictionAccuracy: 87,
-    timestamp: '2025-05-01T08:30:00',
+    timestamp: '2025-05-09T08:30:00',
     predictedFlood: {
       date: '2025-05-15',
       probabilityPercentage: 75,
@@ -94,7 +119,32 @@ export const floodData: FloodData[] = [
       crops: 15.7,
       properties: 27.4,
       infrastructure: 32.1
-    }
+    },
+    riverData: {
+      name: 'Mithi River',
+      currentLevel: 5.2,
+      dangerLevel: 6.8,
+      warningLevel: 5.5,
+      normalLevel: 3.0,
+      trend: 'rising',
+      lastUpdated: '2025-05-09T07:00:00',
+      source: {
+        name: 'Maharashtra SDMA',
+        url: 'https://sdma.maharashtra.gov.in/',
+        type: 'SDMA'
+      }
+    },
+    activeWarnings: [
+      {
+        type: 'warning',
+        issuedBy: 'IMD Mumbai',
+        issuedAt: '2025-05-09T06:30:00',
+        validUntil: '2025-05-12T06:30:00',
+        message: 'Heavy to very heavy rainfall warning for Mumbai and suburban areas',
+        affectedAreas: 'Mumbai City, Thane, Palghar',
+        sourceUrl: 'https://mausam.imd.gov.in/mumbai/'
+      }
+    ]
   },
   {
     id: 2,
@@ -107,7 +157,7 @@ export const floodData: FloodData[] = [
     riverLevel: 4.7,
     coordinates: [22.5726, 88.3639],
     predictionAccuracy: 82,
-    timestamp: '2025-05-02T10:15:00',
+    timestamp: '2025-05-09T10:15:00',
     predictedFlood: {
       date: '2025-05-20',
       probabilityPercentage: 60,
@@ -127,6 +177,20 @@ export const floodData: FloodData[] = [
     estimatedDamage: {
       crops: 8.3,
       properties: 14.6
+    },
+    riverData: {
+      name: 'Hooghly River',
+      currentLevel: 4.7,
+      dangerLevel: 7.5,
+      warningLevel: 6.0,
+      normalLevel: 3.5,
+      trend: 'stable',
+      lastUpdated: '2025-05-09T09:00:00',
+      source: {
+        name: 'Central Water Commission',
+        url: 'https://cwc.gov.in/',
+        type: 'CWC'
+      }
     }
   },
   {
@@ -140,7 +204,7 @@ export const floodData: FloodData[] = [
     riverLevel: 6.1,
     coordinates: [13.0827, 80.2707],
     predictionAccuracy: 91,
-    timestamp: '2025-05-01T12:45:00',
+    timestamp: '2025-05-09T12:45:00',
     predictedFlood: {
       date: '2025-05-12',
       probabilityPercentage: 85,
@@ -161,7 +225,41 @@ export const floodData: FloodData[] = [
       crops: 23.5,
       properties: 42.8,
       infrastructure: 51.2
-    }
+    },
+    riverData: {
+      name: 'Adyar River',
+      currentLevel: 6.1,
+      dangerLevel: 8.0,
+      warningLevel: 6.5,
+      normalLevel: 3.2,
+      trend: 'rising',
+      lastUpdated: '2025-05-09T12:00:00',
+      source: {
+        name: 'Chennai Metropolitan Water Supply and Sewerage Board',
+        url: 'https://chennaimetrowater.tn.gov.in/',
+        type: 'CMWSSB'
+      }
+    },
+    activeWarnings: [
+      {
+        type: 'severe',
+        issuedBy: 'IMD Chennai',
+        issuedAt: '2025-05-09T10:00:00',
+        validUntil: '2025-05-11T10:00:00',
+        message: 'Red alert: Extremely heavy rainfall expected in Chennai and surrounding districts',
+        affectedAreas: 'Chennai, Tiruvallur, Kanchipuram',
+        sourceUrl: 'https://mausam.imd.gov.in/chennai/'
+      },
+      {
+        type: 'warning',
+        issuedBy: 'CMWSSB',
+        issuedAt: '2025-05-09T11:30:00',
+        validUntil: '2025-05-12T11:30:00',
+        message: 'Increased discharge from Chembarambakkam reservoir. Risk of flooding along Adyar River.',
+        affectedAreas: 'Areas along Adyar River, Saidapet, Kotturpuram',
+        sourceUrl: 'https://chennaimetrowater.tn.gov.in/alerts/'
+      }
+    ]
   },
   {
     id: 4,
@@ -174,7 +272,7 @@ export const floodData: FloodData[] = [
     riverLevel: 3.5,
     coordinates: [28.6139, 77.2090],
     predictionAccuracy: 79,
-    timestamp: '2025-05-03T09:20:00',
+    timestamp: '2025-05-09T09:20:00',
     predictedFlood: {
       date: '2025-05-25',
       probabilityPercentage: 30,
@@ -194,6 +292,20 @@ export const floodData: FloodData[] = [
     estimatedDamage: {
       crops: 3.2,
       properties: 7.1
+    },
+    riverData: {
+      name: 'Yamuna River',
+      currentLevel: 204.5,
+      dangerLevel: 206.0,
+      warningLevel: 205.0,
+      normalLevel: 202.0,
+      trend: 'stable',
+      lastUpdated: '2025-05-09T08:00:00',
+      source: {
+        name: 'Central Water Commission',
+        url: 'https://cwc.gov.in/',
+        type: 'CWC'
+      }
     }
   },
   {
@@ -404,4 +516,50 @@ export const getPredictionData = (region: string) => {
     day,
     probability: Math.min(100, Math.max(0, pattern[idx] + ((idx + regionFactor) % 5)))
   }));
+};
+
+// New function to get river level history for charts
+export const getRiverLevelHistory = (region: string) => {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const floodInfo = getFloodDataForRegion(region);
+  
+  if (!floodInfo?.riverData) {
+    return [];
+  }
+  
+  // Base river level adjusted per region - this would be real historical data in production
+  const baseLevel = floodInfo.riverData.normalLevel;
+  const dangerLevel = floodInfo.riverData.dangerLevel;
+  const warningLevel = floodInfo.riverData.warningLevel;
+  
+  // Generate a realistic annual pattern for river levels in India
+  // Higher in monsoon seasons, lower in dry seasons
+  const getSeasonalFactor = (month: number) => {
+    // June to September (monsoon season) - higher levels
+    if (month >= 5 && month <= 8) return 1.2 + (Math.random() * 0.4);
+    // October to November (post-monsoon) - gradually decreasing
+    if (month >= 9 && month <= 10) return 1.0 + (Math.random() * 0.3);
+    // December to February (winter) - lower levels
+    if (month >= 11 || month <= 1) return 0.7 + (Math.random() * 0.2);
+    // March to May (summer/pre-monsoon) - lowest levels
+    return 0.5 + (Math.random() * 0.2);
+  };
+  
+  return months.map((month, idx) => {
+    const seasonalFactor = getSeasonalFactor(idx);
+    const level = +(baseLevel * seasonalFactor).toFixed(1);
+    
+    return {
+      month,
+      level,
+      dangerLevel,
+      warningLevel,
+    };
+  });
+};
+
+// New function to get active flood warnings
+export const getActiveWarnings = (region: string) => {
+  const floodInfo = getFloodDataForRegion(region);
+  return floodInfo?.activeWarnings || [];
 };
