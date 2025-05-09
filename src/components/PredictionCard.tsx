@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ArrowUp, ExternalLink, AlertCircle } from 'lucide-react';
+import { ArrowUp, ExternalLink, AlertCircle, Droplet, Home, Wheat } from 'lucide-react';
 import { FloodData } from '../data/floodData';
 import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 
@@ -47,6 +47,15 @@ const PredictionCard: React.FC<PredictionCardProps> = ({ floodData }) => {
         {predictedFlood.source.name} <ExternalLink className="h-3 w-3 ml-0.5" />
       </a>
     );
+  };
+
+  // Calculate next update time (12 hours from last update)
+  const getNextUpdateTime = () => {
+    if (!predictedFlood.timestamp) return null;
+    
+    const lastUpdate = new Date(predictedFlood.timestamp);
+    const nextUpdate = new Date(lastUpdate.getTime() + (12 * 60 * 60 * 1000));
+    return nextUpdate.toLocaleString();
   };
 
   return (
@@ -128,10 +137,39 @@ const PredictionCard: React.FC<PredictionCardProps> = ({ floodData }) => {
           </div>
         </div>
         
+        {/* New section for estimated damages */}
+        {floodData.estimatedDamage && (
+          <div className="border-t pt-3">
+            <h3 className="text-sm font-semibold mb-2 flex items-center">
+              <Droplet className="h-4 w-4 mr-1 text-flood-warning" />
+              Estimated Damages
+            </h3>
+            <div className="space-y-1">
+              <div className="damage-stat">
+                <span className="flex items-center"><Wheat className="h-3 w-3 mr-1" /> Agricultural Crops</span>
+                <span className="damage-value">₹{floodData.estimatedDamage.crops} Cr</span>
+              </div>
+              <div className="damage-stat">
+                <span className="flex items-center"><Home className="h-3 w-3 mr-1" /> Properties</span>
+                <span className="damage-value">₹{floodData.estimatedDamage.properties} Cr</span>
+              </div>
+              {floodData.estimatedDamage.infrastructure && (
+                <div className="damage-stat">
+                  <span>Infrastructure</span>
+                  <span className="damage-value">₹{floodData.estimatedDamage.infrastructure} Cr</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
         <div className="pt-2 border-t">
           <p className="text-xs text-muted-foreground">
             {predictedFlood.timestamp ? (
-              <>Last updated: {new Date(predictedFlood.timestamp).toLocaleString()}</>
+              <>
+                Last updated: {new Date(predictedFlood.timestamp).toLocaleString()}<br/>
+                Next update: {getNextUpdateTime()}
+              </>
             ) : (
               <>Prediction based on official data sources</>
             )}

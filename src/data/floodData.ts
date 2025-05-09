@@ -27,6 +27,12 @@ export type FloodData = {
       type: 'IMD' | 'CMWSSB' | 'other';
     };
   };
+  // New field for damage estimates
+  estimatedDamage?: {
+    crops: number; // in crores of rupees
+    properties: number; // in crores of rupees
+    infrastructure?: number; // in crores of rupees
+  };
 };
 
 export type RegionOption = {
@@ -83,6 +89,11 @@ export const floodData: FloodData[] = [
         url: 'https://mausam.imd.gov.in/',
         type: 'IMD'
       }
+    },
+    estimatedDamage: {
+      crops: 15.7,
+      properties: 27.4,
+      infrastructure: 32.1
     }
   },
   {
@@ -112,6 +123,10 @@ export const floodData: FloodData[] = [
         url: 'https://mausam.imd.gov.in/',
         type: 'IMD'
       }
+    },
+    estimatedDamage: {
+      crops: 8.3,
+      properties: 14.6
     }
   },
   {
@@ -141,6 +156,11 @@ export const floodData: FloodData[] = [
         url: 'https://chennaimetrowater.tn.gov.in/',
         type: 'CMWSSB'
       }
+    },
+    estimatedDamage: {
+      crops: 23.5,
+      properties: 42.8,
+      infrastructure: 51.2
     }
   },
   {
@@ -170,6 +190,10 @@ export const floodData: FloodData[] = [
         url: 'https://mausam.imd.gov.in/',
         type: 'IMD'
       }
+    },
+    estimatedDamage: {
+      crops: 3.2,
+      properties: 7.1
     }
   },
   {
@@ -199,6 +223,10 @@ export const floodData: FloodData[] = [
         url: 'https://mausam.imd.gov.in/',
         type: 'IMD'
       }
+    },
+    estimatedDamage: {
+      crops: 1.8,
+      properties: 3.4
     }
   },
   {
@@ -228,6 +256,10 @@ export const floodData: FloodData[] = [
         url: 'https://mausam.imd.gov.in/',
         type: 'IMD'
       }
+    },
+    estimatedDamage: {
+      crops: 12.9,
+      properties: 21.3
     }
   },
   {
@@ -257,6 +289,11 @@ export const floodData: FloodData[] = [
         url: 'https://mausam.imd.gov.in/',
         type: 'IMD'
       }
+    },
+    estimatedDamage: {
+      crops: 30.5,
+      properties: 50.8,
+      infrastructure: 65.2
     }
   },
   {
@@ -286,6 +323,10 @@ export const floodData: FloodData[] = [
         url: 'https://mausam.imd.gov.in/',
         type: 'IMD'
       }
+    },
+    estimatedDamage: {
+      crops: 18.2,
+      properties: 32.7
     }
   }
 ];
