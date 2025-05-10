@@ -8,7 +8,15 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
+import SafetyTips from "./pages/SafetyTips";
+import SafetyBeforeFlood from "./pages/SafetyBeforeFlood";
+import SafetyDuringFlood from "./pages/SafetyDuringFlood";
+import SafetyAfterFlood from "./pages/SafetyAfterFlood";
+import Emergency from "./pages/Emergency";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
 import { AuthProvider } from "./context/AuthContext";
+import RequireAuth from "./components/RequireAuth";
 
 const queryClient = new QueryClient();
 
@@ -20,10 +28,20 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            
+            {/* Protected routes */}
+            <Route path="/" element={<RequireAuth><Index /></RequireAuth>} />
+            <Route path="/admin" element={<RequireAuth adminOnly={true}><AdminDashboard /></RequireAuth>} />
+            <Route path="/safety" element={<RequireAuth><SafetyTips /></RequireAuth>} />
+            <Route path="/safety/before-flood" element={<RequireAuth><SafetyBeforeFlood /></RequireAuth>} />
+            <Route path="/safety/during-flood" element={<RequireAuth><SafetyDuringFlood /></RequireAuth>} />
+            <Route path="/safety/after-flood" element={<RequireAuth><SafetyAfterFlood /></RequireAuth>} />
+            <Route path="/emergency" element={<RequireAuth><Emergency /></RequireAuth>} />
+            <Route path="/about" element={<RequireAuth><About /></RequireAuth>} />
+            <Route path="/contact" element={<RequireAuth><Contact /></RequireAuth>} />
+            
+            {/* Catch-all route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
