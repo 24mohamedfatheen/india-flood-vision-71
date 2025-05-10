@@ -11,18 +11,6 @@ import MapAttribution from './MapAttribution';
 import { createFloodAreaPolygon } from './MapUtils';
 import { MapProps } from './types';
 
-// Fix Leaflet icon issues with webpack
-// This is needed because Leaflet's default icons reference image files that aren't properly bundled
-useEffect(() => {
-  // Only run this once when the component mounts
-  delete (L.Icon.Default.prototype as any)._getIconUrl;
-  L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-    iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-    shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-  });
-}, []);
-
 const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
@@ -39,6 +27,15 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
     if (!mapContainer.current) return;
     
     try {
+      // Fix Leaflet icon issues with webpack
+      // This is needed because Leaflet's default icons reference image files that aren't properly bundled
+      delete (L.Icon.Default.prototype as any)._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+        iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+      });
+      
       // Create the Leaflet map
       map.current = L.map(mapContainer.current).setView([20.5937, 78.9629], 5);
       
