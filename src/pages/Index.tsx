@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import RegionSelector from '../components/RegionSelector';
 import Map from '../components/Map';
@@ -8,8 +9,9 @@ import ChartSection from '../components/ChartSection';
 import PredictionCard from '../components/PredictionCard';
 import { getFloodDataForRegion } from '../data/floodData';
 import { useToast } from '../hooks/use-toast';
-import { Clock, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Clock, RefreshCw, AlertTriangle, LogIn, LogOut } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { useAuth } from '../context/AuthContext';
 
 const Index = () => {
   const [selectedRegion, setSelectedRegion] = useState('mumbai');
@@ -18,6 +20,8 @@ const Index = () => {
   const [dataFreshness, setDataFreshness] = useState<'fresh' | 'stale' | 'updating'>('fresh');
   const floodData = getFloodDataForRegion(selectedRegion);
   const { toast } = useToast();
+  const { user, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
 
   const handleRegionChange = (region: string) => {
     setSelectedRegion(region);
@@ -111,7 +115,50 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-6">
-        <Header />
+        <div className="flex items-center justify-between mb-4">
+          <Header />
+          <div>
+            {isAuthenticated ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  Welcome, {user?.username}
+                  {user?.userType === 'admin' && (
+                    <span className="ml-1 text-xs bg-red-100 text-red-600 px-1 py-0.5 rounded">Admin</span>
+                  )}
+                </span>
+                {user?.userType === 'admin' && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => navigate('/admin')}
+                    className="text-xs h-7"
+                  >
+                    Admin Panel
+                  </Button>
+                )}
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={logout}
+                  className="text-xs h-7"
+                >
+                  <LogOut className="h-3 w-3 mr-1" />
+                  Logout
+                </Button>
+              </div>
+            ) : (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigate('/login')}
+                className="text-xs h-7"
+              >
+                <LogIn className="h-3 w-3 mr-1" />
+                Login
+              </Button>
+            )}
+          </div>
+        </div>
         
         <div className="mb-6 flex items-center justify-between flex-wrap">
           <RegionSelector 
