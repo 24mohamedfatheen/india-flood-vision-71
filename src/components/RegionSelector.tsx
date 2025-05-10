@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { MapPin } from 'lucide-react';
 import { regions } from '../data/floodData';
-import { indiaStatesAndDistricts, getDistrictsForState } from '../data/indiaStatesDistricts';
+import { indiaStatesAndDistricts, getDistrictsForState, getDistrictFullData } from '../data/indiaStatesDistricts';
 import {
   Select,
   SelectContent,
@@ -49,6 +50,9 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({ selectedRegion, onRegio
     
     if (matchingRegion) {
       onRegionChange(matchingRegion.value);
+    } else {
+      // If no direct match in regions data, use the district value as region
+      onRegionChange(value);
     }
   };
 
