@@ -15,6 +15,7 @@ import SafetyAfterFlood from "./pages/SafetyAfterFlood";
 import Emergency from "./pages/Emergency";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
+import Settings from "./pages/Settings";
 import { AuthProvider } from "./context/AuthContext";
 import RequireAuth from "./components/RequireAuth";
 
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="/emergency" element={<RequireAuth><Emergency /></RequireAuth>} />
             <Route path="/about" element={<RequireAuth><About /></RequireAuth>} />
             <Route path="/contact" element={<RequireAuth><Contact /></RequireAuth>} />
+            <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
             
             {/* Catch-all route */}
             <Route path="*" element={<NotFound />} />

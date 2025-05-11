@@ -19,7 +19,8 @@ import {
   Info,
   Mail,
   User,
-  LogOut
+  LogOut,
+  Settings
 } from 'lucide-react';
 import { Button } from './ui/button';
 
@@ -117,6 +118,13 @@ const Navigation = () => {
               <Link to="/contact" className={navigationMenuTriggerStyle()}>
                 <Mail className="mr-2 h-4 w-4" />
                 Contact Us
+              </Link>
+            </NavigationMenuItem>
+
+            <NavigationMenuItem>
+              <Link to="/settings" className={navigationMenuTriggerStyle()}>
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
               </Link>
             </NavigationMenuItem>
           </NavigationMenuList>
