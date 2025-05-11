@@ -2,7 +2,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield } from 'lucide-react';
+import { Shield, FlashFloodWarning, FirstAidKit, PowerOff } from 'lucide-react';
 
 const SafetyTips = () => {
   return (
@@ -21,8 +21,8 @@ const SafetyTips = () => {
         <Card className="hover:shadow-lg transition-shadow overflow-hidden">
           <div className="relative h-48 overflow-hidden">
             <img 
-              src="/placeholder.svg" 
-              alt="Preparing for a flood" 
+              src="/lovable-uploads/5f3d8cc2-d84d-4f19-a9fa-dbb2aa7c7fa5.png" 
+              alt="Family emergency plan" 
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end">
@@ -50,8 +50,8 @@ const SafetyTips = () => {
         <Card className="hover:shadow-lg transition-shadow overflow-hidden">
           <div className="relative h-48 overflow-hidden">
             <img 
-              src="/placeholder.svg" 
-              alt="During a flood" 
+              src="/lovable-uploads/433dcfbf-0d9c-4d28-878e-b79404f107d2.png" 
+              alt="Flash flood warning sign" 
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end">
@@ -79,8 +79,8 @@ const SafetyTips = () => {
         <Card className="hover:shadow-lg transition-shadow overflow-hidden">
           <div className="relative h-48 overflow-hidden">
             <img 
-              src="/placeholder.svg" 
-              alt="After a flood" 
+              src="/lovable-uploads/d6e192bf-00ce-41a2-a5dd-ae580e638b4f.png" 
+              alt="Contaminated water warning" 
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end">
@@ -103,6 +103,76 @@ const SafetyTips = () => {
           <CardFooter>
             <Link to="/safety/after-flood" className="text-blue-600 hover:underline">Read more</Link>
           </CardFooter>
+        </Card>
+      </div>
+      
+      <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="hover:shadow-lg transition-shadow overflow-hidden">
+          <div className="relative h-40 overflow-hidden">
+            <img 
+              src="/lovable-uploads/4d70bdd8-3e5a-4a99-a5af-5ef057b5e66e.png" 
+              alt="First aid kit" 
+              className="w-full h-full object-contain p-4"
+            />
+          </div>
+          <CardHeader className="py-3">
+            <CardTitle className="text-center">Emergency Kit</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center">
+            <FirstAidKit className="h-6 w-6 mx-auto mb-2 text-red-600" />
+            <p className="text-sm">Keep a well-stocked emergency kit ready</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="hover:shadow-lg transition-shadow overflow-hidden">
+          <div className="relative h-40 overflow-hidden">
+            <img 
+              src="/lovable-uploads/29383ae2-2cf4-4fb9-af97-1b47cbf424b7.png" 
+              alt="Evacuation route map" 
+              className="w-full h-full object-contain p-4"
+            />
+          </div>
+          <CardHeader className="py-3">
+            <CardTitle className="text-center">Evacuation Routes</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center">
+            <FlashFloodWarning className="h-6 w-6 mx-auto mb-2 text-red-600" />
+            <p className="text-sm">Know multiple evacuation routes</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="hover:shadow-lg transition-shadow overflow-hidden">
+          <div className="relative h-40 overflow-hidden">
+            <img 
+              src="/lovable-uploads/f0786497-0f3d-498d-8197-d7c5d7f0a8fd.png" 
+              alt="Power outage safety" 
+              className="w-full h-full object-contain p-4"
+            />
+          </div>
+          <CardHeader className="py-3">
+            <CardTitle className="text-center">Power Outage Safety</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center">
+            <PowerOff className="h-6 w-6 mx-auto mb-2 text-blue-600" />
+            <p className="text-sm">Handle power outages safely</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="hover:shadow-lg transition-shadow overflow-hidden">
+          <div className="relative h-40 overflow-hidden">
+            <img 
+              src="/lovable-uploads/d5181fca-17bd-420a-b0e9-603e8a8691f0.png" 
+              alt="First aid kit supplies" 
+              className="w-full h-full object-contain p-4"
+            />
+          </div>
+          <CardHeader className="py-3">
+            <CardTitle className="text-center">First Aid</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center">
+            <FirstAidKit className="h-6 w-6 mx-auto mb-2 text-red-600" />
+            <p className="text-sm">Be prepared with first aid supplies</p>
+          </CardContent>
         </Card>
       </div>
     </div>
