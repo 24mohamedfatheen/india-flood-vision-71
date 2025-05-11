@@ -1,13 +1,51 @@
-
-import React from 'react';
-import { Settings as SettingsIcon } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Settings as SettingsIcon, Globe } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from "@/hooks/use-toast";
 
 const Settings = () => {
+  const [theme, setTheme] = useState('light');
+  const [language, setLanguage] = useState('english');
+  const { toast } = useToast();
+  
+  // Apply theme when it changes
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.classList.remove('light', 'dark');
+    root.classList.add(theme);
+    
+    localStorage.setItem('theme', theme);
+    
+    toast({
+      title: "Theme Changed",
+      description: `Theme set to ${theme} mode`,
+    });
+  }, [theme, toast]);
+  
+  // Apply language preference
+  useEffect(() => {
+    localStorage.setItem('language', language);
+    
+    toast({
+      title: "Language Changed",
+      description: `Language set to ${language}`,
+    });
+  }, [language, toast]);
+  
+  // Initialize from localStorage on component mount
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    const savedLanguage = localStorage.getItem('language') || 'english';
+    
+    setTheme(savedTheme);
+    setLanguage(savedLanguage);
+  }, []);
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center mb-6">
@@ -56,7 +94,7 @@ const Settings = () => {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Theme</Label>
-              <RadioGroup defaultValue="light">
+              <RadioGroup value={theme} onValueChange={setTheme}>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="light" id="light" />
                   <Label htmlFor="light">Light</Label>
@@ -70,6 +108,25 @@ const Settings = () => {
                   <Label htmlFor="system">System</Label>
                 </div>
               </RadioGroup>
+            </div>
+            <Separator />
+            <div className="space-y-2">
+              <Label>Language</Label>
+              <Select value={language} onValueChange={setLanguage}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select Language" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="english">English</SelectItem>
+                  <SelectItem value="hindi">Hindi</SelectItem>
+                  <SelectItem value="tamil">Tamil</SelectItem>
+                  <SelectItem value="malayalam">Malayalam</SelectItem>
+                  <SelectItem value="telugu">Telugu</SelectItem>
+                  <SelectItem value="urdu">Urdu</SelectItem>
+                  <SelectItem value="bengali">Bengali</SelectItem>
+                  <SelectItem value="marathi">Marathi</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <Separator />
             <div className="flex items-center justify-between">

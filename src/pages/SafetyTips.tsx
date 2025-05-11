@@ -18,7 +18,17 @@ const SafetyTips = () => {
       </p>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="hover:shadow-lg transition-shadow">
+        <Card className="hover:shadow-lg transition-shadow overflow-hidden">
+          <div className="relative h-48 overflow-hidden">
+            <img 
+              src="/placeholder.svg" 
+              alt="Preparing for a flood" 
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end">
+              <h3 className="text-white text-xl font-bold p-4">Before a Flood</h3>
+            </div>
+          </div>
           <CardHeader>
             <CardTitle>Before a Flood</CardTitle>
             <CardDescription>Preparation measures</CardDescription>
@@ -37,7 +47,17 @@ const SafetyTips = () => {
           </CardFooter>
         </Card>
         
-        <Card className="hover:shadow-lg transition-shadow">
+        <Card className="hover:shadow-lg transition-shadow overflow-hidden">
+          <div className="relative h-48 overflow-hidden">
+            <img 
+              src="/placeholder.svg" 
+              alt="During a flood" 
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end">
+              <h3 className="text-white text-xl font-bold p-4">During a Flood</h3>
+            </div>
+          </div>
           <CardHeader>
             <CardTitle>During a Flood</CardTitle>
             <CardDescription>Critical actions</CardDescription>
@@ -56,7 +76,17 @@ const SafetyTips = () => {
           </CardFooter>
         </Card>
         
-        <Card className="hover:shadow-lg transition-shadow">
+        <Card className="hover:shadow-lg transition-shadow overflow-hidden">
+          <div className="relative h-48 overflow-hidden">
+            <img 
+              src="/placeholder.svg" 
+              alt="After a flood" 
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end">
+              <h3 className="text-white text-xl font-bold p-4">After a Flood</h3>
+            </div>
+          </div>
           <CardHeader>
             <CardTitle>After a Flood</CardTitle>
             <CardDescription>Recovery guidelines</CardDescription>
