@@ -4,7 +4,7 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, L
 import { getHistoricalRainfallData, getPredictionData } from '../data/floodData';
 import { Button } from './ui/button';
 import { Calendar } from './ui/calendar';
-import { format, subMonths, addDays } from 'date-fns';
+import { format, subMonths, addDays, isValid } from 'date-fns';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -18,12 +18,51 @@ const ChartSection: React.FC<ChartSectionProps> = ({ selectedRegion }) => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [dateRange, setDateRange] = useState<'week' | 'month' | 'year'>('month');
   
-  // Get rainfall data based on selected date and range
-  const rainfallData = getHistoricalRainfallData(selectedRegion, selectedDate, dateRange);
+  // Get rainfall data based on selected region and date range
+  const rainfallData = getHistoricalRainfallData(selectedRegion);
+  
+  // Filter data based on selected date and range
+  const filteredRainfallData = React.useMemo(() => {
+    return rainfallData.filter(item => {
+      const itemDate = new Date(item.date);
+      if (!isValid(itemDate)) return false;
+      
+      if (dateRange === 'week') {
+        const weekAgo = new Date(selectedDate);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        return itemDate >= weekAgo && itemDate <= selectedDate;
+      } else if (dateRange === 'month') {
+        const monthAgo = subMonths(selectedDate, 1);
+        return itemDate >= monthAgo && itemDate <= selectedDate;
+      } else if (dateRange === 'year') {
+        const yearAgo = new Date(selectedDate);
+        yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+        return itemDate >= yearAgo && itemDate <= selectedDate;
+      }
+      return true;
+    });
+  }, [rainfallData, selectedDate, dateRange]);
   
   // Get prediction data starting from the selected date
-  const predictionData = getPredictionData(selectedRegion, selectedDate);
+  const predictionData = getPredictionData(selectedRegion);
   
+  // Filter prediction data to start from selected date
+  const filteredPredictionData = React.useMemo(() => {
+    return predictionData.filter(item => {
+      const itemDate = new Date(item.date);
+      return isValid(itemDate) && itemDate >= selectedDate;
+    }).slice(0, 7); // Limit to 7 days of predictions
+  }, [predictionData, selectedDate]);
+  
+  // Safe date formatter function to prevent errors
+  const safeDateFormat = (dateValue: string | number | Date, formatStr: string) => {
+    const date = new Date(dateValue);
+    if (!isValid(date)) {
+      return 'Invalid date';
+    }
+    return format(date, formatStr);
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
       <div className="flood-card">
@@ -56,7 +95,7 @@ const ChartSection: React.FC<ChartSectionProps> = ({ selectedRegion }) => {
                   className="h-9 px-4 py-2"
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {format(selectedDate, "MMM dd, yyyy")}
+                  {safeDateFormat(selectedDate, "MMM dd, yyyy")}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="end">
@@ -75,20 +114,19 @@ const ChartSection: React.FC<ChartSectionProps> = ({ selectedRegion }) => {
         
         <div className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={rainfallData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+            <BarChart data={filteredRainfallData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
-                dataKey={dateRange === 'year' ? "month" : "date"} 
-                tickFormatter={(tick) => dateRange === 'year' ? tick : format(new Date(tick), 'MMM dd')}
+                dataKey="date" 
+                tickFormatter={(tick) => {
+                  return safeDateFormat(tick, dateRange === 'year' ? 'MMM' : 'MMM dd');
+                }}
               />
               <YAxis domain={[0, 'dataMax + 50']} />
               <Tooltip
                 formatter={(value) => [`${value} mm`, 'Rainfall']}
                 labelFormatter={(label) => {
-                  if (dateRange === 'year') {
-                    return `Month: ${label}`;
-                  }
-                  return format(new Date(label), 'MMMM d, yyyy');
+                  return safeDateFormat(label, 'MMMM d, yyyy');
                 }}
               />
               <Legend />
@@ -103,7 +141,7 @@ const ChartSection: React.FC<ChartSectionProps> = ({ selectedRegion }) => {
           <div>
             <h2 className="section-title">7-Day Flood Probability Forecast</h2>
             <p className="text-sm text-muted-foreground">
-              Starting from {format(selectedDate, 'MMM dd, yyyy')}
+              Starting from {safeDateFormat(selectedDate, 'MMM dd, yyyy')}
             </p>
           </div>
           <div className="mt-2 md:mt-0">
@@ -114,7 +152,7 @@ const ChartSection: React.FC<ChartSectionProps> = ({ selectedRegion }) => {
                   className="h-9 px-4 py-2"
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {format(selectedDate, "MMM dd, yyyy")}
+                  {safeDateFormat(selectedDate, "MMM dd, yyyy")}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="end">
@@ -133,16 +171,20 @@ const ChartSection: React.FC<ChartSectionProps> = ({ selectedRegion }) => {
         
         <div className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={predictionData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+            <LineChart data={filteredPredictionData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
                 dataKey="date" 
-                tickFormatter={(tick) => format(new Date(tick), 'MMM dd')}
+                tickFormatter={(tick) => {
+                  return safeDateFormat(tick, 'MMM dd');
+                }}
               />
               <YAxis domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
               <Tooltip
                 formatter={(value) => [`${Number(value).toFixed(1)}%`, 'Probability']}
-                labelFormatter={(label) => format(new Date(label), 'MMMM d, yyyy')}
+                labelFormatter={(label) => {
+                  return safeDateFormat(label, 'MMMM d, yyyy');
+                }}
               />
               <Legend />
               <Line
