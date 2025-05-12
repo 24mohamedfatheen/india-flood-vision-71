@@ -4,7 +4,7 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, L
 import { getHistoricalRainfallData, getPredictionData } from '../data/floodData';
 import { Button } from './ui/button';
 import { Calendar } from './ui/calendar';
-import { format, subMonths, addDays, isValid } from 'date-fns';
+import { format, subMonths, addDays, isValid, parseISO } from 'date-fns';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -18,13 +18,29 @@ const ChartSection: React.FC<ChartSectionProps> = ({ selectedRegion }) => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [dateRange, setDateRange] = useState<'week' | 'month' | 'year'>('month');
   
-  // Get rainfall data based on selected region and date range
+  // Get rainfall data based on selected region
   const rainfallData = getHistoricalRainfallData(selectedRegion);
+  
+  // Process rainfall data to add proper date objects
+  const processedRainfallData = React.useMemo(() => {
+    const currentYear = selectedDate.getFullYear();
+    return rainfallData.map((item, index) => {
+      // Create an actual date from the month name
+      // For simplicity, using the 1st day of each month
+      const monthIndex = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(item.month);
+      const date = new Date(currentYear, monthIndex, 1);
+      return {
+        ...item,
+        date: date,
+        formattedDate: format(date, 'yyyy-MM-dd') // String format for comparison
+      };
+    });
+  }, [rainfallData, selectedDate]);
   
   // Filter data based on selected date and range
   const filteredRainfallData = React.useMemo(() => {
-    return rainfallData.filter(item => {
-      const itemDate = new Date(item.date);
+    return processedRainfallData.filter(item => {
+      const itemDate = item.date;
       if (!isValid(itemDate)) return false;
       
       if (dateRange === 'week') {
@@ -41,26 +57,59 @@ const ChartSection: React.FC<ChartSectionProps> = ({ selectedRegion }) => {
       }
       return true;
     });
-  }, [rainfallData, selectedDate, dateRange]);
+  }, [processedRainfallData, selectedDate, dateRange]);
   
   // Get prediction data starting from the selected date
   const predictionData = getPredictionData(selectedRegion);
   
+  // Process prediction data to add proper date objects
+  const processedPredictionData = React.useMemo(() => {
+    return predictionData.map((item, index) => {
+      // Create actual dates from the prediction days
+      const date = new Date(selectedDate);
+      date.setDate(date.getDate() + index); // Adding days based on index
+      return {
+        ...item,
+        date: date,
+        formattedDate: format(date, 'yyyy-MM-dd') // String format for comparison
+      };
+    });
+  }, [predictionData, selectedDate]);
+  
   // Filter prediction data to start from selected date
   const filteredPredictionData = React.useMemo(() => {
-    return predictionData.filter(item => {
-      const itemDate = new Date(item.date);
-      return isValid(itemDate) && itemDate >= selectedDate;
-    }).slice(0, 7); // Limit to 7 days of predictions
-  }, [predictionData, selectedDate]);
+    return processedPredictionData.slice(0, 7); // Limit to 7 days of predictions
+  }, [processedPredictionData]);
   
   // Safe date formatter function to prevent errors
   const safeDateFormat = (dateValue: string | number | Date, formatStr: string) => {
-    const date = new Date(dateValue);
+    let date: Date;
+    
+    if (typeof dateValue === 'string') {
+      try {
+        // Try to parse ISO string first
+        date = parseISO(dateValue);
+      } catch (e) {
+        // If not ISO format, try direct Date construction
+        date = new Date(dateValue);
+      }
+    } else if (dateValue instanceof Date) {
+      date = dateValue;
+    } else if (typeof dateValue === 'number') {
+      date = new Date(dateValue);
+    } else {
+      return 'Invalid date';
+    }
+    
     if (!isValid(date)) {
       return 'Invalid date';
     }
-    return format(date, formatStr);
+    
+    try {
+      return format(date, formatStr);
+    } catch (e) {
+      return 'Format error';
+    }
   };
 
   return (
@@ -117,16 +166,21 @@ const ChartSection: React.FC<ChartSectionProps> = ({ selectedRegion }) => {
             <BarChart data={filteredRainfallData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
-                dataKey="date" 
+                dataKey="formattedDate" 
                 tickFormatter={(tick) => {
-                  return safeDateFormat(tick, dateRange === 'year' ? 'MMM' : 'MMM dd');
+                  const date = new Date(tick);
+                  return isValid(date) ? format(date, dateRange === 'year' ? 'MMM' : 'MMM dd') : '';
                 }}
               />
               <YAxis domain={[0, 'dataMax + 50']} />
               <Tooltip
                 formatter={(value) => [`${value} mm`, 'Rainfall']}
                 labelFormatter={(label) => {
-                  return safeDateFormat(label, 'MMMM d, yyyy');
+                  if (typeof label === 'string') {
+                    const date = new Date(label);
+                    return isValid(date) ? format(date, 'MMMM d, yyyy') : label;
+                  }
+                  return label;
                 }}
               />
               <Legend />
@@ -174,16 +228,21 @@ const ChartSection: React.FC<ChartSectionProps> = ({ selectedRegion }) => {
             <LineChart data={filteredPredictionData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
-                dataKey="date" 
+                dataKey="formattedDate" 
                 tickFormatter={(tick) => {
-                  return safeDateFormat(tick, 'MMM dd');
+                  const date = new Date(tick);
+                  return isValid(date) ? format(date, 'MMM dd') : '';
                 }}
               />
               <YAxis domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
               <Tooltip
                 formatter={(value) => [`${Number(value).toFixed(1)}%`, 'Probability']}
                 labelFormatter={(label) => {
-                  return safeDateFormat(label, 'MMMM d, yyyy');
+                  if (typeof label === 'string') {
+                    const date = new Date(label);
+                    return isValid(date) ? format(date, 'MMMM d, yyyy') : label;
+                  }
+                  return label;
                 }}
               />
               <Legend />
