@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Shield, AlertTriangle, FlashFloodWarning } from 'lucide-react';
+import { Shield, AlertTriangle } from 'lucide-react';
 
 const SafetyDuringFlood = () => {
   return (

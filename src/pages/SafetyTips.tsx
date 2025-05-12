@@ -2,7 +2,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, FlashFloodWarning, FirstAidKit, PowerOff } from 'lucide-react';
+import { Shield, AlertTriangle, Heart, PowerOff } from 'lucide-react';
 
 const SafetyTips = () => {
   return (
@@ -119,7 +119,7 @@ const SafetyTips = () => {
             <CardTitle className="text-center">Emergency Kit</CardTitle>
           </CardHeader>
           <CardContent className="text-center">
-            <FirstAidKit className="h-6 w-6 mx-auto mb-2 text-red-600" />
+            <Heart className="h-6 w-6 mx-auto mb-2 text-red-600" />
             <p className="text-sm">Keep a well-stocked emergency kit ready</p>
           </CardContent>
         </Card>
@@ -136,7 +136,7 @@ const SafetyTips = () => {
             <CardTitle className="text-center">Evacuation Routes</CardTitle>
           </CardHeader>
           <CardContent className="text-center">
-            <FlashFloodWarning className="h-6 w-6 mx-auto mb-2 text-red-600" />
+            <AlertTriangle className="h-6 w-6 mx-auto mb-2 text-red-600" />
             <p className="text-sm">Know multiple evacuation routes</p>
           </CardContent>
         </Card>
@@ -170,7 +170,7 @@ const SafetyTips = () => {
             <CardTitle className="text-center">First Aid</CardTitle>
           </CardHeader>
           <CardContent className="text-center">
-            <FirstAidKit className="h-6 w-6 mx-auto mb-2 text-red-600" />
+            <Heart className="h-6 w-6 mx-auto mb-2 text-red-600" />
             <p className="text-sm">Be prepared with first aid supplies</p>
           </CardContent>
         </Card>
