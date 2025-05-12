@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, Database, Settings, Users } from 'lucide-react';
+import { AlertTriangle, Database, Settings, Users, FileText } from 'lucide-react';
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -84,7 +84,29 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
           
-          <Card className="md:col-span-2 lg:col-span-3">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Emergency Reports
+              </CardTitle>
+              <FileText className="h-4 w-4 text-orange-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">5 New</div>
+              <p className="text-xs text-muted-foreground">
+                3 high priority reports requiring attention
+              </p>
+              <Button 
+                className="w-full mt-4" 
+                size="sm"
+                onClick={() => navigate('/emergency-reports')}
+              >
+                View Reports
+              </Button>
+            </CardContent>
+          </Card>
+          
+          <Card className="md:col-span-2">
             <CardHeader>
               <CardTitle>System Settings</CardTitle>
               <CardDescription>Configure application behavior and permissions</CardDescription>

@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
+import EmergencyReports from "./pages/EmergencyReports";
 import SafetyTips from "./pages/SafetyTips";
 import SafetyBeforeFlood from "./pages/SafetyBeforeFlood";
 import SafetyDuringFlood from "./pages/SafetyDuringFlood";
@@ -38,6 +39,7 @@ const App = () => {
                 {/* Protected routes */}
                 <Route path="/" element={<RequireAuth><Index /></RequireAuth>} />
                 <Route path="/admin" element={<RequireAuth adminOnly={true}><AdminDashboard /></RequireAuth>} />
+                <Route path="/emergency-reports" element={<RequireAuth adminOnly={true}><EmergencyReports /></RequireAuth>} />
                 <Route path="/safety" element={<RequireAuth><SafetyTips /></RequireAuth>} />
                 <Route path="/safety/before-flood" element={<RequireAuth><SafetyBeforeFlood /></RequireAuth>} />
                 <Route path="/safety/during-flood" element={<RequireAuth><SafetyDuringFlood /></RequireAuth>} />
