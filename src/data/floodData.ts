@@ -483,7 +483,7 @@ export const getHistoricalRainfallData = (region: string) => {
 };
 
 export const getPredictionData = (region: string) => {
-  const nextDays = ['Today', 'Tomorrow', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'];
+  const nextDays = ['Today', 'Tomorrow', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7', 'Day 8', 'Day 9', 'Day 10'];
   const floodInfo = getFloodDataForRegion(region);
   
   // Realistic pattern based on the risk level and region characteristics
@@ -492,30 +492,39 @@ export const getPredictionData = (region: string) => {
   switch(floodInfo?.riskLevel) {
     case 'severe':
       // High immediate risk that gradually decreases
-      pattern = [80, 92, 95, 85, 75, 60, 45];
+      pattern = [80, 92, 95, 85, 75, 60, 45, 35, 30, 25];
       break;
     case 'high':
       // Risk that peaks in a few days then decreases
-      pattern = [55, 65, 80, 75, 65, 50, 40];
+      pattern = [55, 65, 80, 75, 65, 50, 40, 35, 30, 25];
       break;
     case 'medium':
       // Moderate risk with slight increase then decrease
-      pattern = [35, 45, 55, 65, 60, 50, 40];
+      pattern = [35, 45, 55, 65, 60, 50, 40, 35, 30, 25];
       break;
     case 'low':
     default:
       // Low risk that remains relatively stable
-      pattern = [15, 20, 25, 30, 30, 25, 20];
+      pattern = [15, 20, 25, 30, 30, 25, 20, 18, 15, 12];
       break;
   }
+  
+  // Add daily variation based on the current date to make it update every day
+  const today = new Date();
+  const dayFactor = today.getDate() % 10;
   
   // Add some variation based on the region to make it more realistic
   const regionFactor = floodInfo?.region.length ?? 6;
   
-  return nextDays.map((day, idx) => ({
-    day,
-    probability: Math.min(100, Math.max(0, pattern[idx] + ((idx + regionFactor) % 5)))
-  }));
+  return nextDays.map((day, idx) => {
+    // Use current date to create daily variation
+    const dailyVariation = ((today.getDate() + idx) % 5) - 2;
+    
+    return {
+      day,
+      probability: Math.min(100, Math.max(0, pattern[idx] + dailyVariation + ((idx + regionFactor + dayFactor) % 5)))
+    };
+  });
 };
 
 // New function to get river level history for charts
