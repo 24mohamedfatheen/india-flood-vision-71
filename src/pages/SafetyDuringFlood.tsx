@@ -55,7 +55,7 @@ const SafetyDuringFlood = () => {
             className="w-full h-56 object-cover rounded-lg"
           />
           <div>
-            <h2>Evacuation Safety</h2>
+            <h2 className="text-2xl font-bold text-red-600 mb-3">EVACUATION SAFETY</h2>
             <ul>
               <li>If ordered to evacuate, do so immediately</li>
               <li>Follow recommended evacuation routes – shortcuts may be blocked</li>
@@ -67,7 +67,7 @@ const SafetyDuringFlood = () => {
           </div>
         </div>
         
-        <h2>If You Cannot Evacuate</h2>
+        <h2 className="text-2xl font-bold text-amber-600 mb-3">IF YOU CANNOT EVACUATE</h2>
         <ul>
           <li>Move to the highest level of the building</li>
           <li>Stay away from windows and doors</li>
@@ -109,7 +109,7 @@ const SafetyDuringFlood = () => {
             className="w-full h-56 object-cover rounded-lg"
           />
           <div>
-            <h2>Power and Utilities</h2>
+            <h2 className="text-2xl font-bold text-blue-600 mb-3">POWER AND UTILITIES</h2>
             <ul>
               <li>If you smell gas or suspect a leak, turn off the main gas valve and evacuate immediately</li>
               <li>Switch off electricity at the main panel if the area is flooded or about to flood</li>

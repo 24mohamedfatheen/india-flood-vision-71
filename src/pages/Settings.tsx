@@ -1,15 +1,29 @@
 
 import React, { useEffect, useState } from 'react';
-import { SettingsIcon, Globe } from 'lucide-react';
+import { SettingsIcon, Globe, Bell } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from "@/hooks/use-toast";
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+const languageData = [
+  { code: 'english', name: 'English', displayName: 'English', direction: 'ltr' },
+  { code: 'hindi', name: 'हिन्दी', displayName: 'Hindi', direction: 'ltr' },
+  { code: 'tamil', name: 'தமிழ்', displayName: 'Tamil', direction: 'ltr' },
+  { code: 'malayalam', name: 'മലയാളം', displayName: 'Malayalam', direction: 'ltr' },
+  { code: 'telugu', name: 'తెలుగు', displayName: 'Telugu', direction: 'ltr' },
+  { code: 'urdu', name: 'اردو', displayName: 'Urdu', direction: 'rtl' },
+  { code: 'bengali', name: 'বাংলা', displayName: 'Bengali', direction: 'ltr' },
+  { code: 'marathi', name: 'मराठी', displayName: 'Marathi', direction: 'ltr' }
+];
 
 const Settings = () => {
   const [theme, setTheme] = useState('light');
+  const [language, setLanguage] = useState('english');
   const { toast } = useToast();
   
   // Apply theme when it changes
@@ -26,10 +40,35 @@ const Settings = () => {
     });
   }, [theme, toast]);
   
+  // Apply language when it changes
+  useEffect(() => {
+    const selectedLang = languageData.find(lang => lang.code === language);
+    
+    if (selectedLang) {
+      document.documentElement.setAttribute('lang', language);
+      
+      // Handle RTL languages
+      document.documentElement.setAttribute('dir', selectedLang.direction);
+      
+      localStorage.setItem('language', language);
+      
+      toast({
+        title: "Language Changed",
+        description: `Interface language changed to ${selectedLang.displayName}`,
+      });
+      
+      // Reload the page to apply translations
+      // In a real app, this would use a translation system instead of reloading
+      // window.location.reload();
+    }
+  }, [language, toast]);
+  
   // Initialize from localStorage on component mount
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') || 'light';
+    const savedLanguage = localStorage.getItem('language') || 'english';
     setTheme(savedTheme);
+    setLanguage(savedLanguage);
   }, []);
 
   return (
@@ -39,207 +78,213 @@ const Settings = () => {
         <h1 className="text-3xl font-bold">Settings</h1>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <CardTitle>Notification Settings</CardTitle>
-            <CardDescription>Configure how you receive alerts and notifications</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="email-notifications">Email Notifications</Label>
-                <p className="text-sm text-muted-foreground">Receive alerts via email</p>
-              </div>
-              <Switch id="email-notifications" />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="sms-notifications">SMS Notifications</Label>
-                <p className="text-sm text-muted-foreground">Receive alerts via SMS</p>
-              </div>
-              <Switch id="sms-notifications" />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="push-notifications">Push Notifications</Label>
-                <p className="text-sm text-muted-foreground">Receive push notifications</p>
-              </div>
-              <Switch id="push-notifications" defaultChecked />
-            </div>
-          </CardContent>
-        </Card>
+      <Tabs defaultValue="language" className="mb-6">
+        <TabsList className="mb-4">
+          <TabsTrigger value="language">
+            <Globe className="h-4 w-4 mr-2" />
+            Language
+          </TabsTrigger>
+          <TabsTrigger value="display">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2">
+              <circle cx="12" cy="12" r="4"></circle>
+              <path d="M12 2v2"></path>
+              <path d="M12 20v2"></path>
+              <path d="M20 12h2"></path>
+              <path d="M2 12h2"></path>
+            </svg>
+            Display
+          </TabsTrigger>
+          <TabsTrigger value="notifications">
+            <Bell className="h-4 w-4 mr-2" />
+            Notifications
+          </TabsTrigger>
+          <TabsTrigger value="privacy">Privacy</TabsTrigger>
+        </TabsList>
         
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <div className="flex items-center">
-              <Globe className="h-5 w-5 mr-2 text-blue-600" />
-              <CardTitle>Language Settings</CardTitle>
-            </div>
-            <CardDescription>Choose your preferred language</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <RadioGroup defaultValue="english" onValueChange={(value) => {
-              localStorage.setItem('language', value);
-              toast({
-                title: "Language Changed",
-                description: `Language set to ${value}`,
-              });
-            }}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div className="flex items-center space-x-2 border p-2 rounded-md hover:bg-gray-50">
-                  <RadioGroupItem value="english" id="english" />
-                  <Label htmlFor="english">English</Label>
-                </div>
-                <div className="flex items-center space-x-2 border p-2 rounded-md hover:bg-gray-50">
-                  <RadioGroupItem value="hindi" id="hindi" />
-                  <Label htmlFor="hindi">हिन्दी (Hindi)</Label>
-                </div>
-                <div className="flex items-center space-x-2 border p-2 rounded-md hover:bg-gray-50">
-                  <RadioGroupItem value="tamil" id="tamil" />
-                  <Label htmlFor="tamil">தமிழ் (Tamil)</Label>
-                </div>
-                <div className="flex items-center space-x-2 border p-2 rounded-md hover:bg-gray-50">
-                  <RadioGroupItem value="malayalam" id="malayalam" />
-                  <Label htmlFor="malayalam">മലയാളം (Malayalam)</Label>
-                </div>
-                <div className="flex items-center space-x-2 border p-2 rounded-md hover:bg-gray-50">
-                  <RadioGroupItem value="telugu" id="telugu" />
-                  <Label htmlFor="telugu">తెలుగు (Telugu)</Label>
-                </div>
-                <div className="flex items-center space-x-2 border p-2 rounded-md hover:bg-gray-50">
-                  <RadioGroupItem value="urdu" id="urdu" />
-                  <Label htmlFor="urdu">اردو (Urdu)</Label>
-                </div>
-                <div className="flex items-center space-x-2 border p-2 rounded-md hover:bg-gray-50">
-                  <RadioGroupItem value="bengali" id="bengali" />
-                  <Label htmlFor="bengali">বাংলা (Bengali)</Label>
-                </div>
-                <div className="flex items-center space-x-2 border p-2 rounded-md hover:bg-gray-50">
-                  <RadioGroupItem value="marathi" id="marathi" />
-                  <Label htmlFor="marathi">मराठी (Marathi)</Label>
-                </div>
+        <TabsContent value="language" className="space-y-4">
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="flex items-center">
+                <Globe className="h-5 w-5 mr-2 text-blue-600" />
+                <CardTitle>Language Settings</CardTitle>
               </div>
-            </RadioGroup>
-            <div className="bg-blue-50 p-3 rounded-md">
-              <p className="text-sm text-blue-700">
-                Selecting a language will change the interface language throughout the entire application. Some content may remain in English during the translation process.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+              <CardDescription>Choose your preferred language for the entire application</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+                {languageData.map(lang => (
+                  <Button
+                    key={lang.code}
+                    variant={language === lang.code ? "default" : "outline"}
+                    className={`justify-start ${language === lang.code ? 'bg-blue-600' : ''} transition-all`}
+                    onClick={() => setLanguage(lang.code)}
+                  >
+                    <div className="flex items-center">
+                      <span className="text-lg mr-2">{lang.name}</span>
+                      <span className="text-xs opacity-70">({lang.displayName})</span>
+                    </div>
+                  </Button>
+                ))}
+              </div>
+              
+              <div className="bg-blue-50 p-4 rounded-md mt-4">
+                <h3 className="font-medium text-blue-700 mb-2">Application-wide Translation</h3>
+                <p className="text-sm text-blue-700">
+                  Selecting a language will change the interface language throughout the entire application. 
+                  All menus, buttons, and content will be displayed in your chosen language.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
         
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <CardTitle>Display Settings</CardTitle>
-            <CardDescription>Customize your viewing experience</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Theme</Label>
-              <RadioGroup value={theme} onValueChange={setTheme}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="light" id="light" />
-                  <Label htmlFor="light">Light</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="dark" id="dark" />
-                  <Label htmlFor="dark">Dark</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="system" id="system" />
-                  <Label htmlFor="system">System</Label>
-                </div>
-              </RadioGroup>
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="high-contrast">High Contrast Mode</Label>
-                <p className="text-sm text-muted-foreground">For better readability</p>
+        <TabsContent value="display">
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle>Display Settings</CardTitle>
+              <CardDescription>Customize your viewing experience</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Theme</Label>
+                <RadioGroup value={theme} onValueChange={setTheme}>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="light" id="light" />
+                    <Label htmlFor="light">Light</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="dark" id="dark" />
+                    <Label htmlFor="dark">Dark</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="system" id="system" />
+                    <Label htmlFor="system">System</Label>
+                  </div>
+                </RadioGroup>
               </div>
-              <Switch id="high-contrast" />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="auto-refresh">Auto-refresh Data</Label>
-                <p className="text-sm text-muted-foreground">Keep flood data current</p>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="high-contrast">High Contrast Mode</Label>
+                  <p className="text-sm text-muted-foreground">For better readability</p>
+                </div>
+                <Switch id="high-contrast" />
               </div>
-              <Switch id="auto-refresh" defaultChecked />
-            </div>
-          </CardContent>
-        </Card>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="auto-refresh">Auto-refresh Data</Label>
+                  <p className="text-sm text-muted-foreground">Keep flood data current</p>
+                </div>
+                <Switch id="auto-refresh" defaultChecked />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
         
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <CardTitle>Location Settings</CardTitle>
-            <CardDescription>Configure your location preferences</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="location-services">Location Services</Label>
-                <p className="text-sm text-muted-foreground">Allow access to your location</p>
+        <TabsContent value="notifications">
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle>Notification Settings</CardTitle>
+              <CardDescription>Configure how you receive alerts and notifications</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="email-notifications">Email Notifications</Label>
+                  <p className="text-sm text-muted-foreground">Receive alerts via email</p>
+                </div>
+                <Switch id="email-notifications" />
               </div>
-              <Switch id="location-services" defaultChecked />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="default-region">Default Region</Label>
-                <p className="text-sm text-muted-foreground">Set your preferred region</p>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="sms-notifications">SMS Notifications</Label>
+                  <p className="text-sm text-muted-foreground">Receive alerts via SMS</p>
+                </div>
+                <Switch id="sms-notifications" />
               </div>
-              <Switch id="default-region" />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="nearby-alerts">Nearby Flood Alerts</Label>
-                <p className="text-sm text-muted-foreground">Receive alerts for nearby areas</p>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="push-notifications">Push Notifications</Label>
+                  <p className="text-sm text-muted-foreground">Receive push notifications</p>
+                </div>
+                <Switch id="push-notifications" defaultChecked />
               </div>
-              <Switch id="nearby-alerts" defaultChecked />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
         
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <CardTitle>Privacy Settings</CardTitle>
-            <CardDescription>Manage your privacy preferences</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="data-collection">Data Collection</Label>
-                <p className="text-sm text-muted-foreground">Allow anonymous usage data</p>
+        <TabsContent value="privacy">
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle>Privacy Settings</CardTitle>
+              <CardDescription>Manage your privacy preferences</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="data-collection">Data Collection</Label>
+                  <p className="text-sm text-muted-foreground">Allow anonymous usage data</p>
+                </div>
+                <Switch id="data-collection" defaultChecked />
               </div>
-              <Switch id="data-collection" defaultChecked />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="third-party">Third-party Sharing</Label>
-                <p className="text-sm text-muted-foreground">Share data with partners</p>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="third-party">Third-party Sharing</Label>
+                  <p className="text-sm text-muted-foreground">Share data with partners</p>
+                </div>
+                <Switch id="third-party" />
               </div>
-              <Switch id="third-party" />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="remember-history">Remember Search History</Label>
-                <p className="text-sm text-muted-foreground">Save your search history</p>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="remember-history">Remember Search History</Label>
+                  <p className="text-sm text-muted-foreground">Save your search history</p>
+                </div>
+                <Switch id="remember-history" defaultChecked />
               </div>
-              <Switch id="remember-history" defaultChecked />
+            </CardContent>
+            <CardFooter>
+              <p className="text-sm text-muted-foreground">Privacy settings last updated: {new Date().toLocaleDateString()}</p>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+      </Tabs>
+      
+      <Card className="hover:shadow-lg transition-shadow">
+        <CardHeader>
+          <CardTitle>Location Settings</CardTitle>
+          <CardDescription>Configure your location preferences</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="location-services">Location Services</Label>
+              <p className="text-sm text-muted-foreground">Allow access to your location</p>
             </div>
-          </CardContent>
-          <CardFooter>
-            <p className="text-sm text-muted-foreground">Privacy settings last updated: {new Date().toLocaleDateString()}</p>
-          </CardFooter>
-        </Card>
-      </div>
+            <Switch id="location-services" defaultChecked />
+          </div>
+          <Separator />
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="default-region">Default Region</Label>
+              <p className="text-sm text-muted-foreground">Set your preferred region</p>
+            </div>
+            <Switch id="default-region" />
+          </div>
+          <Separator />
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="nearby-alerts">Nearby Flood Alerts</Label>
+              <p className="text-sm text-muted-foreground">Receive alerts for nearby areas</p>
+            </div>
+            <Switch id="nearby-alerts" defaultChecked />
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
