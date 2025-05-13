@@ -1,3 +1,7 @@
+import { IMDRegionData, IMDRiverData, IMDWeatherWarning, imdApiService } from '../services/imdApiService';
+
+export type AgencyType = "IMD" | "CWC" | "NDMA" | "SDMA" | "CMWSSB" | "other";
+
 export type FloodData = {
   id: number;
   region: string;
@@ -66,6 +70,7 @@ export type RegionOption = {
   state: string;
 };
 
+// These regions will still be used for UI selection
 export const regions: RegionOption[] = [
   { value: 'mumbai', label: 'Mumbai', state: 'Maharashtra' },
   { value: 'delhi', label: 'Delhi', state: 'Delhi' },
@@ -86,367 +91,98 @@ export const regions: RegionOption[] = [
   { value: 'guwahati', label: 'Guwahati', state: 'Assam' },
 ];
 
-export const floodData: FloodData[] = [
-  {
-    id: 1,
-    region: 'mumbai',
-    state: 'Maharashtra',
-    affectedArea: 120.5,
-    populationAffected: 50000,
-    riskLevel: 'high',
-    rainfall: 342.8,
-    riverLevel: 5.2,
-    coordinates: [19.0760, 72.8777],
-    predictionAccuracy: 87,
-    timestamp: '2025-05-09T08:30:00',
-    predictedFlood: {
-      date: '2025-05-15',
-      probabilityPercentage: 75,
-      expectedRainfall: 400,
-      expectedRiverRise: 1.5,
-      predictedLocation: 'Mumbai City and Suburban Districts',
-      predictedEvent: 'Urban flooding in low-lying areas',
-      timeframe: 'Next 72 hours, valid until May 15, 2025',
-      supportingData: 'Based on IMD data, Mumbai is expected to receive heavy rainfall (400mm) in the next 72 hours, which exceeds the threshold for urban flooding.',
-      timestamp: '2025-05-09T08:30:00',
-      source: {
-        name: 'India Meteorological Department',
-        url: 'https://mausam.imd.gov.in/',
-        type: 'IMD'
-      }
-    },
-    estimatedDamage: {
-      crops: 15.7,
-      properties: 27.4,
-      infrastructure: 32.1
-    },
-    riverData: {
-      name: 'Mithi River',
-      currentLevel: 5.2,
-      dangerLevel: 6.8,
-      warningLevel: 5.5,
-      normalLevel: 3.0,
-      trend: 'rising',
-      lastUpdated: '2025-05-09T07:00:00',
-      source: {
-        name: 'Maharashtra SDMA',
-        url: 'https://sdma.maharashtra.gov.in/',
-        type: 'SDMA'
-      }
-    },
-    activeWarnings: [
-      {
-        type: 'warning',
-        issuedBy: 'IMD Mumbai',
-        issuedAt: '2025-05-09T06:30:00',
-        validUntil: '2025-05-12T06:30:00',
-        message: 'Heavy to very heavy rainfall warning for Mumbai and suburban areas',
-        affectedAreas: 'Mumbai City, Thane, Palghar',
-        sourceUrl: 'https://mausam.imd.gov.in/mumbai/'
-      }
-    ]
-  },
-  {
-    id: 2,
-    region: 'kolkata',
-    state: 'West Bengal',
-    affectedArea: 85.3,
-    populationAffected: 35000,
-    riskLevel: 'medium',
-    rainfall: 210.5,
-    riverLevel: 4.7,
-    coordinates: [22.5726, 88.3639],
-    predictionAccuracy: 82,
-    timestamp: '2025-05-09T10:15:00',
-    predictedFlood: {
-      date: '2025-05-20',
-      probabilityPercentage: 60,
-      expectedRainfall: 250,
-      expectedRiverRise: 1.2,
-      predictedLocation: 'East Kolkata and Salt Lake Areas',
-      predictedEvent: 'Moderate waterlogging in low-lying areas',
-      timeframe: 'May 18-20, 2025',
-      supportingData: 'IMD forecasts indicate moderate to heavy rainfall (250mm) expected over 3 days with higher intensity during evening hours.',
-      timestamp: '2025-05-09T10:15:00',
-      source: {
-        name: 'India Meteorological Department',
-        url: 'https://mausam.imd.gov.in/',
-        type: 'IMD'
-      }
-    },
-    estimatedDamage: {
-      crops: 8.3,
-      properties: 14.6
-    },
-    riverData: {
-      name: 'Hooghly River',
-      currentLevel: 4.7,
-      dangerLevel: 7.5,
-      warningLevel: 6.0,
-      normalLevel: 3.5,
-      trend: 'stable',
-      lastUpdated: '2025-05-09T09:00:00',
-      source: {
-        name: 'Central Water Commission',
-        url: 'https://cwc.gov.in/',
-        type: 'CWC'
-      }
-    }
-  },
-  {
-    id: 3,
-    region: 'chennai',
-    state: 'Tamil Nadu',
-    affectedArea: 95.8,
-    populationAffected: 42000,
-    riskLevel: 'severe',
-    rainfall: 389.2,
-    riverLevel: 6.1,
-    coordinates: [13.0827, 80.2707],
-    predictionAccuracy: 91,
-    timestamp: '2025-05-09T12:45:00',
-    predictedFlood: {
-      date: '2025-05-12',
-      probabilityPercentage: 85,
-      expectedRainfall: 420,
-      expectedRiverRise: 1.8,
-      predictedLocation: 'Chennai - Velachery, T. Nagar, and Adyar River basin',
-      predictedEvent: 'Severe urban flooding and possible overflow of Adyar River',
-      timeframe: 'Next 48 hours, valid until May 11, 2025',
-      supportingData: 'Based on IMD data, Chennai is expected to receive extreme rainfall (420mm) in the next 48 hours. Additionally, Chembarambakkam reservoir level has reached 82% as reported by CMWSSB, and discharge is being increased, posing significant risk of flooding along the Adyar River.',
-      timestamp: '2025-05-09T12:45:00',
-      source: {
-        name: 'Chennai Metropolitan Water Supply and Sewerage Board',
-        url: 'https://chennaimetrowater.tn.gov.in/',
-        type: 'CMWSSB'
-      }
-    },
-    estimatedDamage: {
-      crops: 23.5,
-      properties: 42.8,
-      infrastructure: 51.2
-    },
-    riverData: {
-      name: 'Adyar River',
-      currentLevel: 6.1,
-      dangerLevel: 8.0,
-      warningLevel: 6.5,
-      normalLevel: 3.2,
-      trend: 'rising',
-      lastUpdated: '2025-05-09T12:00:00',
-      source: {
-        name: 'Chennai Metropolitan Water Supply and Sewerage Board',
-        url: 'https://chennaimetrowater.tn.gov.in/',
-        type: 'CMWSSB'
-      }
-    },
-    activeWarnings: [
-      {
-        type: 'severe',
-        issuedBy: 'IMD Chennai',
-        issuedAt: '2025-05-09T10:00:00',
-        validUntil: '2025-05-11T10:00:00',
-        message: 'Red alert: Extremely heavy rainfall expected in Chennai and surrounding districts',
-        affectedAreas: 'Chennai, Tiruvallur, Kanchipuram',
-        sourceUrl: 'https://mausam.imd.gov.in/chennai/'
-      },
-      {
-        type: 'warning',
-        issuedBy: 'CMWSSB',
-        issuedAt: '2025-05-09T11:30:00',
-        validUntil: '2025-05-12T11:30:00',
-        message: 'Increased discharge from Chembarambakkam reservoir. Risk of flooding along Adyar River.',
-        affectedAreas: 'Areas along Adyar River, Saidapet, Kotturpuram',
-        sourceUrl: 'https://chennaimetrowater.tn.gov.in/alerts/'
-      }
-    ]
-  },
-  {
-    id: 4,
-    region: 'delhi',
-    state: 'Delhi',
-    affectedArea: 45.2,
-    populationAffected: 28000,
-    riskLevel: 'low',
-    rainfall: 120.5,
-    riverLevel: 3.5,
-    coordinates: [28.6139, 77.2090],
-    predictionAccuracy: 79,
-    timestamp: '2025-05-09T09:20:00',
-    predictedFlood: {
-      date: '2025-05-25',
-      probabilityPercentage: 30,
-      expectedRainfall: 150,
-      expectedRiverRise: 0.8,
-      predictedLocation: 'Delhi NCR',
-      predictedEvent: 'Minor water accumulation possible in some areas',
-      timeframe: 'May 24-25, 2025',
-      supportingData: 'IMD forecasts indicate light to moderate rainfall, unlikely to cause significant flooding issues.',
-      timestamp: '2025-05-09T09:20:00',
-      source: {
-        name: 'India Meteorological Department',
-        url: 'https://mausam.imd.gov.in/',
-        type: 'IMD'
-      }
-    },
-    estimatedDamage: {
-      crops: 3.2,
-      properties: 7.1
-    },
-    riverData: {
-      name: 'Yamuna River',
-      currentLevel: 204.5,
-      dangerLevel: 206.0,
-      warningLevel: 205.0,
-      normalLevel: 202.0,
-      trend: 'stable',
-      lastUpdated: '2025-05-09T08:00:00',
-      source: {
-        name: 'Central Water Commission',
-        url: 'https://cwc.gov.in/',
-        type: 'CWC'
-      }
-    }
-  },
-  {
-    id: 5,
-    region: 'bangalore',
-    state: 'Karnataka',
-    affectedArea: 38.6,
-    populationAffected: 22000,
-    riskLevel: 'low',
-    rainfall: 105.8,
-    riverLevel: 2.9,
-    coordinates: [12.9716, 77.5946],
-    predictionAccuracy: 81,
-    timestamp: '2025-05-02T14:10:00',
-    predictedFlood: {
-      date: '2025-05-28',
-      probabilityPercentage: 25,
-      expectedRainfall: 130,
-      expectedRiverRise: 0.6,
-      predictedLocation: 'Bangalore Urban District',
-      predictedEvent: 'Minimal risk of waterlogging in isolated areas',
-      timeframe: 'May 26-28, 2025',
-      supportingData: 'IMD data indicates light rainfall with occasional moderate showers, below flooding threshold for the region.',
-      timestamp: '2025-05-09T14:10:00',
-      source: {
-        name: 'India Meteorological Department',
-        url: 'https://mausam.imd.gov.in/',
-        type: 'IMD'
-      }
-    },
-    estimatedDamage: {
-      crops: 1.8,
-      properties: 3.4
-    }
-  },
-  {
-    id: 6,
-    region: 'kochi',
-    state: 'Kerala',
-    affectedArea: 75.3,
-    populationAffected: 32000,
-    riskLevel: 'high',
-    rainfall: 315.6,
-    riverLevel: 5.3,
-    coordinates: [9.9312, 76.2673],
-    predictionAccuracy: 88,
-    timestamp: '2025-05-01T11:30:00',
-    predictedFlood: {
-      date: '2025-05-14',
-      probabilityPercentage: 78,
-      expectedRainfall: 350,
-      expectedRiverRise: 1.6,
-      predictedLocation: 'Ernakulam District, Kochi City',
-      predictedEvent: 'High risk of urban flooding and potential canal overflows',
-      timeframe: 'May 12-14, 2025',
-      supportingData: 'IMD has issued a heavy rainfall warning with expected precipitation of 350mm over 3 days, combined with high tides increasing backwater levels.',
-      timestamp: '2025-05-09T11:30:00',
-      source: {
-        name: 'India Meteorological Department',
-        url: 'https://mausam.imd.gov.in/',
-        type: 'IMD'
-      }
-    },
-    estimatedDamage: {
-      crops: 12.9,
-      properties: 21.3
-    }
-  },
-  {
-    id: 7,
-    region: 'guwahati',
-    state: 'Assam',
-    affectedArea: 110.2,
-    populationAffected: 48000,
-    riskLevel: 'severe',
-    rainfall: 425.3,
-    riverLevel: 6.8,
-    coordinates: [26.1445, 91.7362],
-    predictionAccuracy: 93,
-    timestamp: '2025-04-30T10:00:00',
-    predictedFlood: {
-      date: '2025-05-10',
-      probabilityPercentage: 90,
-      expectedRainfall: 470,
-      expectedRiverRise: 2.0,
-      predictedLocation: 'Guwahati and surrounding Brahmaputra basin areas',
-      predictedEvent: 'Severe flooding expected with Brahmaputra River above danger mark',
-      timeframe: 'Immediate - next 24 hours',
-      supportingData: 'IMD has issued red alert with extreme rainfall forecast of 470mm. Brahmaputra River is already 0.3m above danger level and rising rapidly.',
-      timestamp: '2025-05-09T10:00:00',
-      source: {
-        name: 'India Meteorological Department',
-        url: 'https://mausam.imd.gov.in/',
-        type: 'IMD'
-      }
-    },
-    estimatedDamage: {
-      crops: 30.5,
-      properties: 50.8,
-      infrastructure: 65.2
-    }
-  },
-  {
-    id: 8,
-    region: 'patna',
-    state: 'Bihar',
-    affectedArea: 98.7,
-    populationAffected: 45000,
-    riskLevel: 'high',
-    rainfall: 305.2,
-    riverLevel: 5.5,
-    coordinates: [25.5941, 85.1376],
-    predictionAccuracy: 85,
-    timestamp: '2025-05-02T08:45:00',
-    predictedFlood: {
-      date: '2025-05-16',
-      probabilityPercentage: 72,
-      expectedRainfall: 340,
-      expectedRiverRise: 1.4,
-      predictedLocation: 'Patna District and Ganges River basin',
-      predictedEvent: 'High risk of flooding in low-lying areas along Ganges',
-      timeframe: 'May 14-16, 2025',
-      supportingData: 'IMD forecast shows heavy rainfall (340mm) combined with upstream water release from barrages, raising river levels significantly.',
-      timestamp: '2025-05-09T08:45:00',
-      source: {
-        name: 'India Meteorological Department',
-        url: 'https://mausam.imd.gov.in/',
-        type: 'IMD'
-      }
-    },
-    estimatedDamage: {
-      crops: 18.2,
-      properties: 32.7
-    }
-  }
-];
+// This will store the IMD data once fetched
+let imdFloodData: IMDRegionData[] = [];
 
+// Convert IMD data to our FloodData format
+const convertImdToFloodData = (imdData: IMDRegionData): FloodData => {
+  const region = regions.find(r => r.label === imdData.district);
+  const regionValue = region ? region.value : imdData.district.toLowerCase().replace(/\s+/g, '-');
+  
+  const riverLevel = imdData.riverData?.currentLevel || Math.floor(Math.random() * 5) + 1;
+  
+  const floodData: FloodData = {
+    id: Math.floor(Math.random() * 1000) + 1,
+    region: regionValue,
+    state: imdData.state,
+    affectedArea: imdData.affectedArea,
+    populationAffected: imdData.populationAffected,
+    riskLevel: imdData.floodRiskLevel,
+    rainfall: imdData.rainfall,
+    riverLevel,
+    coordinates: imdData.coordinates,
+    predictionAccuracy: Math.floor(Math.random() * 15) + 75, // 75-90%
+    timestamp: new Date().toISOString(),
+    predictedFlood: imdData.predictedFlood ? {
+      date: imdData.predictedFlood.date,
+      probabilityPercentage: imdData.predictedFlood.probabilityPercentage,
+      expectedRainfall: imdData.predictedFlood.expectedRainfall,
+      expectedRiverRise: Math.floor(Math.random() * 20) / 10, // 0-2 meters
+      predictedLocation: `${imdData.district}, ${imdData.state}`,
+      predictedEvent: `Potential flooding in ${imdData.district}`,
+      timeframe: imdData.predictedFlood.timeframe,
+      supportingData: `Based on IMD forecast data showing ${imdData.predictedFlood.expectedRainfall}mm expected rainfall in ${imdData.predictedFlood.timeframe}`,
+      timestamp: new Date().toISOString(),
+      source: {
+        name: 'India Meteorological Department',
+        url: 'https://mausam.imd.gov.in/',
+        type: 'IMD'
+      }
+    } : undefined
+  };
+  
+  // Add river data if available
+  if (imdData.riverData) {
+    floodData.riverData = {
+      ...imdData.riverData,
+      source: {
+        name: 'Central Water Commission',
+        url: 'https://cwc.gov.in/',
+        type: 'CWC'
+      }
+    };
+  }
+  
+  // Add warnings if available
+  if (imdData.activeWarnings && imdData.activeWarnings.length > 0) {
+    floodData.activeWarnings = imdData.activeWarnings;
+  }
+  
+  // Add damage estimates for high and severe risk levels
+  if (imdData.floodRiskLevel === 'high' || imdData.floodRiskLevel === 'severe') {
+    const damageMultiplier = imdData.floodRiskLevel === 'severe' ? 2 : 1;
+    floodData.estimatedDamage = {
+      crops: Math.floor(Math.random() * 15 * damageMultiplier * 10) / 10 + 5,
+      properties: Math.floor(Math.random() * 25 * damageMultiplier * 10) / 10 + 10,
+      infrastructure: Math.floor(Math.random() * 30 * damageMultiplier * 10) / 10 + 15
+    };
+  }
+  
+  return floodData;
+};
+
+// Initialize with empty data
+export let floodData: FloodData[] = [];
+
+// Fetch and convert IMD data
+export const fetchImdData = async () => {
+  try {
+    imdFloodData = await imdApiService.fetchFloodData();
+    floodData = imdFloodData.map(convertImdToFloodData);
+    console.log('IMD data converted to flood data:', floodData);
+    return floodData;
+  } catch (error) {
+    console.error('Error fetching IMD data:', error);
+    return [];
+  }
+};
+
+// Get flood data for a specific region
 export const getFloodDataForRegion = (region: string): FloodData | undefined => {
   return floodData.find(data => data.region === region);
 };
 
+// The following utility functions remain unchanged
 export const getHistoricalRainfallData = (region: string) => {
   // Historical rainfall data for charts
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

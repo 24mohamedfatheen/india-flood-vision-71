@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
@@ -8,7 +7,8 @@ import FloodStats from '../components/FloodStats';
 import ChartSection from '../components/ChartSection';
 import PredictionCard from '../components/PredictionCard';
 import HistoricalFloodData from '../components/HistoricalFloodData';
-import { getFloodDataForRegion } from '../data/floodData';
+import IMDSourceInfo from '../components/IMDSourceInfo';
+import { getFloodDataForRegion, fetchImdData } from '../data/floodData';
 import { useToast } from '../hooks/use-toast';
 import { Clock, RefreshCw, AlertTriangle, LogIn, LogOut } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -18,22 +18,56 @@ const Index = () => {
   const [selectedRegion, setSelectedRegion] = useState('mumbai');
   const [lastUpdateTime, setLastUpdateTime] = useState<Date>(new Date());
   const [nextUpdateTime, setNextUpdateTime] = useState<Date>(new Date(Date.now() + 12 * 60 * 60 * 1000));
-  const [dataFreshness, setDataFreshness] = useState<'fresh' | 'stale' | 'updating'>('fresh');
+  const [dataFreshness, setDataFreshness] = useState<'fresh' | 'stale' | 'updating'>('updating');
   const [showHistoricalData, setShowHistoricalData] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const floodData = getFloodDataForRegion(selectedRegion);
   const { toast } = useToast();
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
+  // Initial data fetch
+  useEffect(() => {
+    const loadInitialData = async () => {
+      setDataFreshness('updating');
+      try {
+        await fetchImdData();
+        const now = new Date();
+        setLastUpdateTime(now);
+        setNextUpdateTime(new Date(now.getTime() + 12 * 60 * 60 * 1000));
+        setDataFreshness('fresh');
+        
+        toast({
+          title: "IMD Data Loaded",
+          description: `Latest flood data updated at ${now.toLocaleString()}`,
+          duration: 5000,
+        });
+      } catch (error) {
+        console.error("Error loading IMD data:", error);
+        toast({
+          title: "Error Loading Data",
+          description: "Could not fetch the latest flood data from IMD",
+          variant: "destructive",
+          duration: 5000,
+        });
+        setDataFreshness('stale');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadInitialData();
+  }, [toast]);
+
   const handleRegionChange = (region: string) => {
     setSelectedRegion(region);
   };
   
-  const handleManualRefresh = () => {
+  const handleManualRefresh = async () => {
     setDataFreshness('updating');
     
-    // Simulate a data refresh
-    setTimeout(() => {
+    try {
+      await fetchImdData();
       const now = new Date();
       setLastUpdateTime(now);
       setNextUpdateTime(new Date(now.getTime() + 12 * 60 * 60 * 1000));
@@ -44,45 +78,58 @@ const Index = () => {
         description: `Latest flood data updated at ${now.toLocaleString()}`,
         duration: 5000,
       });
-    }, 1500); // Simulate network delay
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+      toast({
+        title: "Refresh Failed",
+        description: "Could not fetch the latest flood data from IMD",
+        variant: "destructive",
+        duration: 5000,
+      });
+      setDataFreshness('stale');
+    }
   };
   
   // Set up data refresh every 12 hours
   useEffect(() => {
-    // Initial data load
-    setLastUpdateTime(new Date());
-    setNextUpdateTime(new Date(Date.now() + 12 * 60 * 60 * 1000));
-    
-    // Set interval for updates (every 12 hours)
-    const updateInterval = setInterval(() => {
-      // In a real app, you would fetch fresh data here
-      const now = new Date();
-      setLastUpdateTime(now);
-      setNextUpdateTime(new Date(now.getTime() + 12 * 60 * 60 * 1000));
-      setDataFreshness('fresh');
-      
-      // Show toast notification when data is updated
-      toast({
-        title: "Flood data updated",
-        description: `Latest data as of ${now.toLocaleString()}`,
-        duration: 5000,
-      });
-      
-      console.log("Data updated at:", now);
+    const updateInterval = setInterval(async () => {
+      try {
+        await fetchImdData();
+        const now = new Date();
+        setLastUpdateTime(now);
+        setNextUpdateTime(new Date(now.getTime() + 12 * 60 * 60 * 1000));
+        setDataFreshness('fresh');
+        
+        toast({
+          title: "Flood data updated",
+          description: `Latest data as of ${now.toLocaleString()}`,
+          duration: 5000,
+        });
+        
+        console.log("Data updated at:", now);
+      } catch (error) {
+        console.error("Error during scheduled update:", error);
+        setDataFreshness('stale');
+      }
     }, 12 * 60 * 60 * 1000); // 12 hours in milliseconds
     
     // For demo purposes, add a shorter interval to simulate updates
     if (process.env.NODE_ENV === 'development') {
-      const demoInterval = setTimeout(() => {
-        const now = new Date();
-        setLastUpdateTime(now);
-        setNextUpdateTime(new Date(now.getTime() + 12 * 60 * 60 * 1000));
-        
-        toast({
-          title: "Demo update",
-          description: `Latest flood data as of ${now.toLocaleString()}`,
-          duration: 5000,
-        });
+      const demoInterval = setTimeout(async () => {
+        try {
+          await fetchImdData();
+          const now = new Date();
+          setLastUpdateTime(now);
+          setNextUpdateTime(new Date(now.getTime() + 12 * 60 * 60 * 1000));
+          
+          toast({
+            title: "Demo update",
+            description: `Latest flood data as of ${now.toLocaleString()}`,
+            duration: 5000,
+          });
+        } catch (error) {
+          console.error("Error during demo update:", error);
+        }
       }, 60000); // 1 minute for demo
       
       return () => {
@@ -181,7 +228,7 @@ const Index = () => {
               className="text-xs h-7"
             >
               <RefreshCw className={`h-3 w-3 mr-1 ${dataFreshness === 'updating' ? 'animate-spin' : ''}`} />
-              Refresh
+              Refresh IMD Data
             </Button>
           </div>
         </div>
@@ -200,37 +247,50 @@ const Index = () => {
           </div>
         )}
         
-        <Map selectedRegion={selectedRegion} />
-        
-        <FloodStats floodData={floodData} />
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          <div className="lg:col-span-2">
-            <ChartSection selectedRegion={selectedRegion} />
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p className="text-lg font-medium">Loading IMD flood data...</p>
+            <p className="text-sm text-muted-foreground mt-2">Please wait while we fetch the latest information</p>
           </div>
-          <div>
-            <PredictionCard floodData={floodData} />
-          </div>
-        </div>
-        
-        {/* Toggle button for historical flood data section */}
-        <div className="mb-4">
-          <Button 
-            variant="outline"
-            onClick={() => setShowHistoricalData(!showHistoricalData)}
-            className="w-full"
-          >
-            {showHistoricalData ? "Hide Historical Data" : "Show Historical Flood Data (2015-2025)"}
-          </Button>
-        </div>
-        
-        {/* Historical Flood Data Section */}
-        {showHistoricalData && <HistoricalFloodData />}
+        ) : (
+          <>
+            {/* Add IMD Source Info at the top */}
+            <IMDSourceInfo />
+            
+            <Map selectedRegion={selectedRegion} />
+            
+            <FloodStats floodData={floodData} />
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+              <div className="lg:col-span-2">
+                <ChartSection selectedRegion={selectedRegion} />
+              </div>
+              <div>
+                <PredictionCard floodData={floodData} />
+              </div>
+            </div>
+            
+            {/* Toggle button for historical flood data section */}
+            <div className="mb-4">
+              <Button 
+                variant="outline"
+                onClick={() => setShowHistoricalData(!showHistoricalData)}
+                className="w-full"
+              >
+                {showHistoricalData ? "Hide Historical Data" : "Show Historical Flood Data (2015-2025)"}
+              </Button>
+            </div>
+            
+            {/* Historical Flood Data Section */}
+            {showHistoricalData && <HistoricalFloodData />}
+          </>
+        )}
         
         <div className="text-center text-sm rounded-lg bg-white p-4 shadow-sm mb-6">
           <h3 className="font-medium mb-2">Official Data Sources</h3>
           <div className="flex flex-wrap justify-center gap-2 mb-3">
-            <a href="https://mausam.imd.gov.in/" target="_blank" rel="noopener noreferrer" className="data-source-badge">
+            <a href="https://mausam.imd.gov.in/" target="_blank" rel="noopener noreferrer" className="data-source-badge bg-blue-100">
               IMD (India Meteorological Department)
             </a>
             <a href="https://cwc.gov.in/" target="_blank" rel="noopener noreferrer" className="data-source-badge">
@@ -244,12 +304,12 @@ const Index = () => {
             </a>
           </div>
           <p className="text-xs text-muted-foreground">
-            All flood predictions and warnings are based on data from these official sources. Updates occur every 12 hours.
+            All flood predictions and warnings are based on data from the IMD API. Updates occur every 12 hours.
           </p>
         </div>
         
         <footer className="text-center text-sm text-muted-foreground py-4 border-t mt-6">
-          <p>India Flood Vision Dashboard - Data last updated: {lastUpdateTime.toLocaleString()}</p>
+          <p>India Flood Vision Dashboard - IMD Data last updated: {lastUpdateTime.toLocaleString()}</p>
           <p className="text-xs mt-1">Next scheduled update: {nextUpdateTime.toLocaleString()}</p>
         </footer>
       </div>
