@@ -308,5 +308,3 @@ export const getActiveWarnings = (region: string) => {
   const floodInfo = getFloodDataForRegion(region);
   return floodInfo?.activeWarnings || [];
 };
-
-export type AgencyType = "IMD" | "CWC" | "NDMA" | "SDMA" | "CMWSSB" | "other";
