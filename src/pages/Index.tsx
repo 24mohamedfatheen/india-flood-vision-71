@@ -7,6 +7,7 @@ import Map from '../components/Map';
 import FloodStats from '../components/FloodStats';
 import ChartSection from '../components/ChartSection';
 import PredictionCard from '../components/PredictionCard';
+import HistoricalFloodData from '../components/HistoricalFloodData';
 import { getFloodDataForRegion } from '../data/floodData';
 import { useToast } from '../hooks/use-toast';
 import { Clock, RefreshCw, AlertTriangle, LogIn, LogOut } from 'lucide-react';
@@ -18,6 +19,7 @@ const Index = () => {
   const [lastUpdateTime, setLastUpdateTime] = useState<Date>(new Date());
   const [nextUpdateTime, setNextUpdateTime] = useState<Date>(new Date(Date.now() + 12 * 60 * 60 * 1000));
   const [dataFreshness, setDataFreshness] = useState<'fresh' | 'stale' | 'updating'>('fresh');
+  const [showHistoricalData, setShowHistoricalData] = useState(false);
   const floodData = getFloodDataForRegion(selectedRegion);
   const { toast } = useToast();
   const { user, isAuthenticated, logout } = useAuth();
@@ -210,6 +212,20 @@ const Index = () => {
             <PredictionCard floodData={floodData} />
           </div>
         </div>
+        
+        {/* Toggle button for historical flood data section */}
+        <div className="mb-4">
+          <Button 
+            variant="outline"
+            onClick={() => setShowHistoricalData(!showHistoricalData)}
+            className="w-full"
+          >
+            {showHistoricalData ? "Hide Historical Data" : "Show Historical Flood Data (2015-2025)"}
+          </Button>
+        </div>
+        
+        {/* Historical Flood Data Section */}
+        {showHistoricalData && <HistoricalFloodData />}
         
         <div className="text-center text-sm rounded-lg bg-white p-4 shadow-sm mb-6">
           <h3 className="font-medium mb-2">Official Data Sources</h3>
