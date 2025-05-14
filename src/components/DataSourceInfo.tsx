@@ -2,22 +2,22 @@
 import React from 'react';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 
-const IMDSourceInfo = () => {
+const DataSourceInfo = () => {
   return (
     <div className="bg-white rounded-lg p-4 shadow-sm mb-6">
-      <h2 className="text-lg font-semibold mb-3 text-primary">IMD Data Source Integration</h2>
+      <h2 className="text-lg font-semibold mb-3 text-primary">Real-Time Data Integration</h2>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <h3 className="text-md font-medium mb-2">About the Data Source</h3>
+          <h3 className="text-md font-medium mb-2">About Our Data</h3>
           <p className="text-sm text-muted-foreground mb-3">
-            The India Flood Vision Dashboard now pulls data directly from the India Meteorological Department (IMD) APIs. 
+            The India Flood Vision Dashboard pulls data directly from official meteorological APIs. 
             This data is organized by states and districts to provide localized flood information and warnings.
           </p>
           
           <h4 className="text-sm font-medium mb-1">Data Organization</h4>
           <p className="text-sm text-muted-foreground mb-3">
-            All flood information is now structured according to:
+            All flood information is structured according to:
           </p>
           <ul className="list-disc pl-5 text-sm text-muted-foreground mb-4">
             <li>State: Administrative state in India</li>
@@ -26,7 +26,7 @@ const IMDSourceInfo = () => {
           </ul>
           
           <div className="bg-blue-50 p-3 rounded-md mb-4">
-            <h4 className="text-sm font-medium text-blue-700 mb-1">IMD Data Refresh Schedule</h4>
+            <h4 className="text-sm font-medium text-blue-700 mb-1">Data Refresh Schedule</h4>
             <p className="text-xs text-blue-600">
               • Automatic updates every 12 hours<br />
               • Manual refresh available<br />
@@ -41,7 +41,7 @@ const IMDSourceInfo = () => {
             <AspectRatio ratio={16/9} className="bg-muted">
               <div className="h-full w-full flex flex-col">
                 <div className="bg-blue-100 text-blue-800 font-medium text-sm p-2 text-center border-b border-blue-200">
-                  IMD Data API
+                  Weather Data API
                 </div>
                 <div className="flex-1 flex flex-col items-center justify-center p-2 gap-2">
                   <div className="w-3/4 h-2 bg-blue-200 rounded"></div>
@@ -91,4 +91,4 @@ const IMDSourceInfo = () => {
   );
 };
 
-export default IMDSourceInfo;
+export default DataSourceInfo;

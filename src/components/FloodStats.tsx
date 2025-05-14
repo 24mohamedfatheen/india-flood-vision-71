@@ -108,11 +108,15 @@ const FloodStats: React.FC<FloodStatsProps> = ({ floodData }) => {
                         rel="noopener noreferrer" 
                         className="data-source-badge hover:bg-blue-200"
                       >
-                        {floodData.predictedFlood.source.type}
+                        {floodData.predictedFlood.source.type === 'IMD' ? 'Weather' : floodData.predictedFlood.source.type}
                       </a>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p className="text-xs">{floodData.predictedFlood.source.name}</p>
+                      <p className="text-xs">{
+                        floodData.predictedFlood.source.name === 'India Meteorological Department' 
+                          ? 'Weather Services' 
+                          : floodData.predictedFlood.source.name
+                      }</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -128,11 +132,15 @@ const FloodStats: React.FC<FloodStatsProps> = ({ floodData }) => {
                         rel="noopener noreferrer" 
                         className="data-source-badge hover:bg-blue-200"
                       >
-                        {floodData.riverData.source.type}
+                        {floodData.riverData.source.type === 'IMD' ? 'Weather' : floodData.riverData.source.type}
                       </a>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p className="text-xs">{floodData.riverData.source.name}</p>
+                      <p className="text-xs">{
+                        floodData.riverData.source.name === 'India Meteorological Department' 
+                          ? 'Weather Services' 
+                          : floodData.riverData.source.name
+                      }</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>

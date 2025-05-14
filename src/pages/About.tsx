@@ -39,10 +39,10 @@ const About = () => {
               We rely on official data from authoritative sources to ensure the accuracy of our flood information:
             </p>
             <ul className="list-disc pl-5 space-y-2">
-              <li><strong>India Meteorological Department (IMD):</strong> Weather forecasts and rainfall data</li>
-              <li><strong>Central Water Commission (CWC):</strong> River water levels and flow data</li>
-              <li><strong>National Remote Sensing Centre (NRSC):</strong> Satellite imagery for flood mapping</li>
-              <li><strong>National Disaster Management Authority (NDMA):</strong> Disaster management protocols and data</li>
+              <li><strong>Weather Services:</strong> Weather forecasts and rainfall data</li>
+              <li><strong>Central Water Commission:</strong> River water levels and flow data</li>
+              <li><strong>National Remote Sensing Centre:</strong> Satellite imagery for flood mapping</li>
+              <li><strong>National Disaster Management Authority:</strong> Disaster management protocols and data</li>
               <li><strong>State Water Resources Departments:</strong> Local water body information and dam release schedules</li>
             </ul>
           </CardContent>

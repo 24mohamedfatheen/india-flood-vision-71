@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
@@ -7,7 +8,7 @@ import FloodStats from '../components/FloodStats';
 import ChartSection from '../components/ChartSection';
 import PredictionCard from '../components/PredictionCard';
 import HistoricalFloodData from '../components/HistoricalFloodData';
-import IMDSourceInfo from '../components/IMDSourceInfo';
+import DataSourceInfo from '../components/DataSourceInfo';
 import { getFloodDataForRegion, fetchImdData } from '../data/floodData';
 import { useToast } from '../hooks/use-toast';
 import { Clock, RefreshCw, AlertTriangle, LogIn, LogOut } from 'lucide-react';
@@ -38,15 +39,15 @@ const Index = () => {
         setDataFreshness('fresh');
         
         toast({
-          title: "IMD Data Loaded",
+          title: "Data Loaded",
           description: `Latest flood data updated at ${now.toLocaleString()}`,
           duration: 5000,
         });
       } catch (error) {
-        console.error("Error loading IMD data:", error);
+        console.error("Error loading data:", error);
         toast({
           title: "Error Loading Data",
-          description: "Could not fetch the latest flood data from IMD",
+          description: "Could not fetch the latest flood data",
           variant: "destructive",
           duration: 5000,
         });
@@ -82,7 +83,7 @@ const Index = () => {
       console.error("Error refreshing data:", error);
       toast({
         title: "Refresh Failed",
-        description: "Could not fetch the latest flood data from IMD",
+        description: "Could not fetch the latest flood data",
         variant: "destructive",
         duration: 5000,
       });
@@ -228,7 +229,7 @@ const Index = () => {
               className="text-xs h-7"
             >
               <RefreshCw className={`h-3 w-3 mr-1 ${dataFreshness === 'updating' ? 'animate-spin' : ''}`} />
-              Refresh IMD Data
+              Refresh Data
             </Button>
           </div>
         </div>
@@ -250,13 +251,13 @@ const Index = () => {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-12">
             <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p className="text-lg font-medium">Loading IMD flood data...</p>
+            <p className="text-lg font-medium">Loading flood data...</p>
             <p className="text-sm text-muted-foreground mt-2">Please wait while we fetch the latest information</p>
           </div>
         ) : (
           <>
-            {/* Add IMD Source Info at the top */}
-            <IMDSourceInfo />
+            {/* Add Data Source Info at the top */}
+            <DataSourceInfo />
             
             <Map selectedRegion={selectedRegion} />
             
@@ -291,25 +292,25 @@ const Index = () => {
           <h3 className="font-medium mb-2">Official Data Sources</h3>
           <div className="flex flex-wrap justify-center gap-2 mb-3">
             <a href="https://mausam.imd.gov.in/" target="_blank" rel="noopener noreferrer" className="data-source-badge bg-blue-100">
-              IMD (India Meteorological Department)
+              Weather Services
             </a>
             <a href="https://cwc.gov.in/" target="_blank" rel="noopener noreferrer" className="data-source-badge">
-              CWC (Central Water Commission)
+              Water Resources
             </a>
             <a href="https://ndma.gov.in/" target="_blank" rel="noopener noreferrer" className="data-source-badge">
-              NDMA (National Disaster Management Authority)
+              Disaster Management
             </a>
             <a href="https://chennaimetrowater.tn.gov.in/" target="_blank" rel="noopener noreferrer" className="data-source-badge">
-              CMWSSB (Chennai Water Supply)
+              Chennai Water Supply
             </a>
           </div>
           <p className="text-xs text-muted-foreground">
-            All flood predictions and warnings are based on data from the IMD API. Updates occur every 12 hours.
+            All flood predictions and warnings are based on official meteorological and hydrological data. Updates occur every 12 hours.
           </p>
         </div>
         
         <footer className="text-center text-sm text-muted-foreground py-4 border-t mt-6">
-          <p>India Flood Vision Dashboard - IMD Data last updated: {lastUpdateTime.toLocaleString()}</p>
+          <p>India Flood Vision Dashboard - Data last updated: {lastUpdateTime.toLocaleString()}</p>
           <p className="text-xs mt-1">Next scheduled update: {nextUpdateTime.toLocaleString()}</p>
         </footer>
       </div>
