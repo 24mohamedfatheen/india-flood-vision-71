@@ -8,7 +8,7 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 210 40% 98%;
     --foreground: 222.2 47.4% 11.2%;
 
     --muted: 210 40% 96.1%;
@@ -23,7 +23,7 @@
     --card: 0 0% 100%;
     --card-foreground: 222.2 47.4% 11.2%;
 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 201 94% 37%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -37,13 +37,23 @@
 
     --ring: 215 20.2% 65.1%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
     
-    /* Flood warning colors */
-    --flood-warning: 38 92% 50%;
-    --flood-danger: 0 84% 60%;
-    --flood-info: 210 100% 56%;
-    --flood-success: 130 50% 54%;
+    /* Flood warning colors with enhanced vibrance */
+    --flood-warning: 36 100% 50%;
+    --flood-danger: 0 90% 60%;
+    --flood-info: 201 94% 45%;
+    --flood-success: 142 76% 45%;
+
+    /* Sidebar theme */
+    --sidebar-background: 201 94% 37%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 201 94% 37%;
+    --sidebar-accent: 210 40% 98%;
+    --sidebar-accent-foreground: 201 94% 37%;
+    --sidebar-border: 214.3 31.8% 91.4%;
+    --sidebar-ring: 215 20.2% 65.1%;
   }
 
   .dark {
@@ -65,8 +75,8 @@
     --card: 224 71% 4%;
     --card-foreground: 213 31% 91%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 1.2%;
+    --primary: 201 94% 45%;
+    --primary-foreground: 210 40% 98%;
 
     --secondary: 222.2 47.4% 11.2%;
     --secondary-foreground: 210 40% 98%;
@@ -76,7 +86,17 @@
 
     --ring: 216 34% 17%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
+    
+    /* Sidebar theme - dark mode */
+    --sidebar-background: 224 71% 10%;
+    --sidebar-foreground: 213 31% 91%;
+    --sidebar-primary: 213 31% 91%;
+    --sidebar-primary-foreground: 224 71% 4%;
+    --sidebar-accent: 216 34% 17%;
+    --sidebar-accent-foreground: 213 31% 91%;
+    --sidebar-border: 216 34% 17%;
+    --sidebar-ring: 216 34% 17%;
   }
 }
 
@@ -87,23 +107,70 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
   }
 }
 
-/* Custom styles for the map components */
+/* Enhanced styling for the app */
+.app-container {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
 
+.page-section {
+  @apply rounded-xl bg-white p-6 shadow-sm mb-6 transition-all;
+}
+
+.page-section:hover {
+  @apply shadow-md;
+}
+
+.section-title {
+  @apply text-xl font-bold mb-4 text-primary flex items-center;
+}
+
+.section-title svg {
+  @apply mr-2;
+}
+
+/* Custom styles for the map components */
 .timestamp-badge {
-  @apply inline-flex items-center text-xs px-2 py-1 rounded bg-gray-50 text-gray-700;
+  @apply inline-flex items-center text-xs px-2 py-1 rounded-md bg-white text-gray-700 shadow-sm border border-gray-100;
 }
 
 .data-source-badge {
-  @apply px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs hover:bg-blue-100 transition-colors;
+  @apply px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs hover:bg-blue-100 transition-colors border border-blue-100;
+}
+
+/* Enhance risk level indicators */
+.risk-indicator {
+  @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-medium;
+}
+
+.risk-low {
+  @apply bg-green-100 text-green-800 border border-green-200;
+}
+
+.risk-moderate {
+  @apply bg-yellow-100 text-yellow-800 border border-yellow-200;
+}
+
+.risk-high {
+  @apply bg-orange-100 text-orange-800 border border-orange-200;
+}
+
+.risk-severe {
+  @apply bg-red-100 text-red-800 border border-red-200;
 }
 
 /* Map specific styles */
 .map-container {
   min-height: 400px;
   position: relative;
+  @apply rounded-xl overflow-hidden shadow-md;
 }
 
 .zoom-controls {
@@ -113,19 +180,22 @@
 .map-tooltip {
   min-width: 200px;
   padding: 8px;
+  @apply bg-white rounded-lg shadow-lg border border-gray-100;
 }
 
 /* Add animation for severe risk markers */
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+.animate-pulse-enhanced {
+  animation: pulse-enhanced 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-@keyframes pulse {
+@keyframes pulse-enhanced {
   0%, 100% {
     opacity: 1;
+    transform: scale(1);
   }
   50% {
     opacity: 0.7;
+    transform: scale(1.05);
   }
 }
 
@@ -142,3 +212,67 @@
   @apply font-sans;
 }
 
+/* Card hover effects */
+.hover-card {
+  @apply transition-all duration-300 ease-in-out;
+}
+
+.hover-card:hover {
+  @apply shadow-lg -translate-y-1;
+}
+
+/* Stats card styles */
+.stat-card {
+  @apply rounded-lg p-4 flex flex-col items-center justify-center text-center transition-all;
+}
+
+/* Gradients for section backgrounds */
+.gradient-blue-light {
+  @apply bg-gradient-to-br from-blue-50 to-white;
+}
+
+.gradient-safety {
+  @apply bg-gradient-to-br from-blue-50 via-white to-blue-50;
+}
+
+/* Animation utilities */
+.fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Typography enhancements */
+.heading-large {
+  @apply text-3xl font-bold text-primary mb-4;
+}
+
+.heading-medium {
+  @apply text-2xl font-semibold text-primary mb-3;
+}
+
+.text-gradient {
+  @apply bg-gradient-to-r from-primary to-blue-700 bg-clip-text text-transparent;
+}
+
+/* Button enhancements */
+.button-gradient {
+  @apply bg-gradient-to-r from-primary to-blue-600 text-white;
+}
+
+.button-outline-gradient:hover {
+  @apply bg-gradient-to-r from-blue-50 to-blue-100;
+}
+
+/* Data visualization enhancements */
+.chart-container {
+  @apply rounded-lg overflow-hidden bg-white p-4 shadow-sm;
+}
+
+/* Add specific visual elements for emergency components */
+.emergency-container {
+  @apply border-l-4 border-red-500 bg-red-50 p-4 rounded-r-lg;
+}
