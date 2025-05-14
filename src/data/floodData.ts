@@ -1,3 +1,4 @@
+
 import { IMDRegionData } from '../services/imdApiService';
 
 export interface FloodData {
@@ -10,8 +11,8 @@ export interface FloodData {
   coordinates: [number, number];  // [latitude, longitude]
   timestamp: string;
   rainfall: number;
-  riverLevel?: number;
   predictionAccuracy: number;
+  riverLevel?: number;
   predictedFlood?: {
     date: string;
     probabilityPercentage: number;
@@ -279,7 +280,14 @@ export const floodData: FloodData[] = [
     riskLevel: 'medium',
     affectedArea: 150,
     populationAffected: 950000,
-    coordinates: [23.0225, 72.5714]
+    coordinates: [23.0225, 72.5714],
+    timestamp: new Date().toISOString(),
+    rainfall: 140,
+    predictionAccuracy: 82,
+    predictedFlood: {
+      date: '2025-08-25',
+      probabilityPercentage: 45
+    }
   },
   {
     id: 8,
@@ -288,7 +296,14 @@ export const floodData: FloodData[] = [
     riskLevel: 'medium',
     affectedArea: 130,
     populationAffected: 850000,
-    coordinates: [18.5204, 73.8567]
+    coordinates: [18.5204, 73.8567],
+    timestamp: new Date().toISOString(),
+    rainfall: 160,
+    predictionAccuracy: 84,
+    predictedFlood: {
+      date: '2025-07-30',
+      probabilityPercentage: 52
+    }
   },
   {
     id: 9,
@@ -297,7 +312,14 @@ export const floodData: FloodData[] = [
     riskLevel: 'high',
     affectedArea: 240,
     populationAffected: 1800000,
-    coordinates: [21.1702, 72.8311]
+    coordinates: [21.1702, 72.8311],
+    timestamp: new Date().toISOString(),
+    rainfall: 220,
+    predictionAccuracy: 88,
+    predictedFlood: {
+      date: '2025-08-15',
+      probabilityPercentage: 68
+    }
   },
   {
     id: 10,
@@ -306,7 +328,14 @@ export const floodData: FloodData[] = [
     riskLevel: 'low',
     affectedArea: 110,
     populationAffected: 750000,
-    coordinates: [26.9139, 75.7873]
+    coordinates: [26.9139, 75.7873],
+    timestamp: new Date().toISOString(),
+    rainfall: 95,
+    predictionAccuracy: 78,
+    predictedFlood: {
+      date: '2025-08-30',
+      probabilityPercentage: 28
+    }
   },
   {
     id: 11,
@@ -315,7 +344,14 @@ export const floodData: FloodData[] = [
     riskLevel: 'medium',
     affectedArea: 160,
     populationAffected: 980000,
-    coordinates: [26.8467, 80.9462]
+    coordinates: [26.8467, 80.9462],
+    timestamp: new Date().toISOString(),
+    rainfall: 165,
+    predictionAccuracy: 83,
+    predictedFlood: {
+      date: '2025-08-10',
+      probabilityPercentage: 56
+    }
   },
   {
     id: 12,
@@ -324,7 +360,14 @@ export const floodData: FloodData[] = [
     riskLevel: 'high',
     affectedArea: 230,
     populationAffected: 1700000,
-    coordinates: [26.4499, 80.3319]
+    coordinates: [26.4499, 80.3319],
+    timestamp: new Date().toISOString(),
+    rainfall: 215,
+    predictionAccuracy: 87,
+    predictedFlood: {
+      date: '2025-08-05',
+      probabilityPercentage: 71
+    }
   },
   {
     id: 13,
@@ -333,7 +376,14 @@ export const floodData: FloodData[] = [
     riskLevel: 'low',
     affectedArea: 100,
     populationAffected: 700000,
-    coordinates: [21.1458, 79.0882]
+    coordinates: [21.1458, 79.0882],
+    timestamp: new Date().toISOString(),
+    rainfall: 110,
+    predictionAccuracy: 81,
+    predictedFlood: {
+      date: '2025-09-10',
+      probabilityPercentage: 35
+    }
   },
   {
     id: 14,
@@ -394,7 +444,14 @@ export const floodData: FloodData[] = [
     riskLevel: 'low',
     affectedArea: 80,
     populationAffected: 650000,
-    coordinates: [22.7196, 75.8577]
+    coordinates: [22.7196, 75.8577],
+    timestamp: new Date().toISOString(),
+    rainfall: 90,
+    predictionAccuracy: 79,
+    predictedFlood: {
+      date: '2025-09-15',
+      probabilityPercentage: 30
+    }
   },
   {
     id: 16,
@@ -525,7 +582,7 @@ export const getFloodDataForRegion = (region: string): FloodData | null => {
   return floodData[0];
 };
 
-// Add missing functions for chart section
+// Add functions for chart section
 export const getHistoricalRainfallData = (region: string) => {
   // Return historical rainfall data for the selected region
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
