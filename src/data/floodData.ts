@@ -1,4 +1,3 @@
-
 import { IMDRegionData } from '../services/imdApiService';
 
 export interface FloodData {
@@ -9,14 +8,52 @@ export interface FloodData {
   affectedArea: number;
   populationAffected: number;
   coordinates: [number, number];  // [latitude, longitude]
+  timestamp: string;
+  rainfall: number;
+  riverLevel?: number;
+  predictionAccuracy: number;
   predictedFlood?: {
     date: string;
     probabilityPercentage: number;
+    timestamp?: string;
+    predictedEvent?: string;
+    predictedLocation?: string;
+    timeframe?: string;
+    supportingData?: string;
+    expectedRainfall?: number;
+    expectedRiverRise?: number;
     source?: {
       name: string;
       url: string;
+      type?: string;
     }
-  }
+  };
+  riverData?: {
+    name: string;
+    currentLevel: number;
+    dangerLevel: number;
+    warningLevel: number;
+    normalLevel: number;
+    trend: 'rising' | 'falling' | 'stable';
+    source: {
+      name: string;
+      url: string;
+      type?: string;
+    }
+  };
+  activeWarnings?: {
+    type: 'severe' | 'warning' | 'alert' | 'watch';
+    issuedBy: string;
+    issuedAt: string;
+    validUntil: string;
+    message: string;
+    sourceUrl: string;
+  }[];
+  estimatedDamage?: {
+    crops: number;
+    properties: number;
+    infrastructure?: number;
+  };
 }
 
 // Predefined regions with accurate coordinates
@@ -50,13 +87,52 @@ export const floodData: FloodData[] = [
     affectedArea: 280,
     populationAffected: 2800000,
     coordinates: [19.0760, 72.8777],
+    timestamp: new Date().toISOString(),
+    rainfall: 235,
+    predictionAccuracy: 87,
     predictedFlood: {
       date: '2025-07-15',
       probabilityPercentage: 72,
+      timestamp: new Date().toISOString(),
+      expectedRainfall: 280,
+      expectedRiverRise: 1.8,
+      timeframe: '2025-07-10 to 2025-07-20',
+      predictedEvent: 'Monsoon Flooding',
+      predictedLocation: 'Mumbai and Suburban Areas',
+      supportingData: 'Based on increased precipitation forecasts and river monitoring',
       source: {
         name: 'Weather Services',
-        url: 'https://mausam.imd.gov.in/'
+        url: 'https://mausam.imd.gov.in/',
+        type: 'Weather'
       }
+    },
+    riverData: {
+      name: 'Mithi River',
+      currentLevel: 4.8,
+      dangerLevel: 7.5,
+      warningLevel: 6.0,
+      normalLevel: 3.5,
+      trend: 'rising',
+      source: {
+        name: 'Water Resources',
+        url: 'https://cwc.gov.in/',
+        type: 'Water'
+      }
+    },
+    activeWarnings: [
+      {
+        type: 'warning',
+        issuedBy: 'Weather Services Mumbai',
+        issuedAt: new Date().toISOString(),
+        validUntil: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
+        message: 'Heavy rainfall warning for Mumbai and surrounding areas',
+        sourceUrl: 'https://mausam.imd.gov.in/'
+      }
+    ],
+    estimatedDamage: {
+      crops: 45,
+      properties: 120,
+      infrastructure: 85
     }
   },
   {
@@ -67,12 +143,32 @@ export const floodData: FloodData[] = [
     affectedArea: 220,
     populationAffected: 1500000,
     coordinates: [28.7041, 77.1025],
+    timestamp: new Date().toISOString(),
+    rainfall: 185,
+    predictionAccuracy: 79,
     predictedFlood: {
       date: '2025-08-10',
       probabilityPercentage: 58,
+      timestamp: new Date().toISOString(),
+      expectedRainfall: 210,
+      expectedRiverRise: 1.2,
       source: {
         name: 'Weather Services',
-        url: 'https://mausam.imd.gov.in/'
+        url: 'https://mausam.imd.gov.in/',
+        type: 'Weather'
+      }
+    },
+    riverData: {
+      name: 'Yamuna River',
+      currentLevel: 5.2,
+      dangerLevel: 7.5,
+      warningLevel: 6.0,
+      normalLevel: 3.5,
+      trend: 'stable',
+      source: {
+        name: 'Water Resources',
+        url: 'https://cwc.gov.in/',
+        type: 'Water'
       }
     }
   },
@@ -84,13 +180,48 @@ export const floodData: FloodData[] = [
     affectedArea: 320,
     populationAffected: 3100000,
     coordinates: [22.5726, 88.3639],
+    timestamp: new Date().toISOString(),
+    rainfall: 310,
+    predictionAccuracy: 92,
     predictedFlood: {
       date: '2025-08-05',
       probabilityPercentage: 85,
+      timestamp: new Date().toISOString(),
+      expectedRainfall: 350,
+      expectedRiverRise: 2.3,
       source: {
         name: 'Weather Services',
-        url: 'https://mausam.imd.gov.in/'
+        url: 'https://mausam.imd.gov.in/',
+        type: 'Weather'
       }
+    },
+    riverData: {
+      name: 'Hooghly River',
+      currentLevel: 6.8,
+      dangerLevel: 7.5,
+      warningLevel: 6.0,
+      normalLevel: 3.5,
+      trend: 'rising',
+      source: {
+        name: 'Water Resources',
+        url: 'https://cwc.gov.in/',
+        type: 'Water'
+      }
+    },
+    activeWarnings: [
+      {
+        type: 'severe',
+        issuedBy: 'Weather Services Kolkata',
+        issuedAt: new Date().toISOString(),
+        validUntil: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
+        message: 'Severe rainfall alert for Kolkata metropolitan area',
+        sourceUrl: 'https://mausam.imd.gov.in/'
+      }
+    ],
+    estimatedDamage: {
+      crops: 75,
+      properties: 180,
+      infrastructure: 130
     }
   },
   {
@@ -101,6 +232,9 @@ export const floodData: FloodData[] = [
     affectedArea: 290,
     populationAffected: 2500000,
     coordinates: [13.0827, 80.2707],
+    timestamp: new Date().toISOString(),
+    rainfall: 250,
+    predictionAccuracy: 90,
     predictedFlood: {
       date: '2025-09-20',
       probabilityPercentage: 78
@@ -114,6 +248,9 @@ export const floodData: FloodData[] = [
     affectedArea: 90,
     populationAffected: 900000,
     coordinates: [12.9716, 77.5946],
+    timestamp: new Date().toISOString(),
+    rainfall: 100,
+    predictionAccuracy: 80,
     predictedFlood: {
       date: '2025-10-15',
       probabilityPercentage: 32
@@ -127,6 +264,9 @@ export const floodData: FloodData[] = [
     affectedArea: 180,
     populationAffected: 1200000,
     coordinates: [17.3850, 78.4867],
+    timestamp: new Date().toISOString(),
+    rainfall: 150,
+    predictionAccuracy: 85,
     predictedFlood: {
       date: '2025-09-05',
       probabilityPercentage: 54
@@ -203,13 +343,48 @@ export const floodData: FloodData[] = [
     affectedArea: 350,
     populationAffected: 2900000,
     coordinates: [25.5941, 85.1376],
+    timestamp: new Date().toISOString(),
+    rainfall: 350,
+    predictionAccuracy: 95,
     predictedFlood: {
       date: '2025-08-01',
       probabilityPercentage: 88,
+      timestamp: new Date().toISOString(),
+      expectedRainfall: 400,
+      expectedRiverRise: 2.5,
       source: {
         name: 'Weather Services',
-        url: 'https://mausam.imd.gov.in/'
+        url: 'https://mausam.imd.gov.in/',
+        type: 'Weather'
       }
+    },
+    riverData: {
+      name: 'Ganga River',
+      currentLevel: 7.2,
+      dangerLevel: 7.5,
+      warningLevel: 6.0,
+      normalLevel: 3.5,
+      trend: 'falling',
+      source: {
+        name: 'Water Resources',
+        url: 'https://cwc.gov.in/',
+        type: 'Water'
+      }
+    },
+    activeWarnings: [
+      {
+        type: 'severe',
+        issuedBy: 'Weather Services Patna',
+        issuedAt: new Date().toISOString(),
+        validUntil: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
+        message: 'Severe rainfall alert for Patna and surrounding areas',
+        sourceUrl: 'https://mausam.imd.gov.in/'
+      }
+    ],
+    estimatedDamage: {
+      crops: 100,
+      properties: 250,
+      infrastructure: 180
     }
   },
   {
@@ -229,12 +404,32 @@ export const floodData: FloodData[] = [
     affectedArea: 260,
     populationAffected: 1650000,
     coordinates: [9.9312, 76.2600],
+    timestamp: new Date().toISOString(),
+    rainfall: 260,
+    predictionAccuracy: 90,
     predictedFlood: {
       date: '2025-07-25',
       probabilityPercentage: 75,
+      timestamp: new Date().toISOString(),
+      expectedRainfall: 300,
+      expectedRiverRise: 2.0,
       source: {
         name: 'Weather Services',
-        url: 'https://mausam.imd.gov.in/'
+        url: 'https://mausam.imd.gov.in/',
+        type: 'Weather'
+      }
+    },
+    riverData: {
+      name: 'Thamiraparamba River',
+      currentLevel: 6.5,
+      dangerLevel: 7.5,
+      warningLevel: 6.0,
+      normalLevel: 3.5,
+      trend: 'stable',
+      source: {
+        name: 'Water Resources',
+        url: 'https://cwc.gov.in/',
+        type: 'Water'
       }
     }
   },
@@ -246,13 +441,48 @@ export const floodData: FloodData[] = [
     affectedArea: 330,
     populationAffected: 1920000,
     coordinates: [26.1445, 91.7362],
+    timestamp: new Date().toISOString(),
+    rainfall: 330,
+    predictionAccuracy: 98,
     predictedFlood: {
       date: '2025-07-10',
       probabilityPercentage: 89,
+      timestamp: new Date().toISOString(),
+      expectedRainfall: 370,
+      expectedRiverRise: 2.8,
       source: {
         name: 'Weather Services',
-        url: 'https://mausam.imd.gov.in/'
+        url: 'https://mausam.imd.gov.in/',
+        type: 'Weather'
       }
+    },
+    riverData: {
+      name: 'Ganges River',
+      currentLevel: 8.0,
+      dangerLevel: 7.5,
+      warningLevel: 6.0,
+      normalLevel: 3.5,
+      trend: 'rising',
+      source: {
+        name: 'Water Resources',
+        url: 'https://cwc.gov.in/',
+        type: 'Water'
+      }
+    },
+    activeWarnings: [
+      {
+        type: 'severe',
+        issuedBy: 'Weather Services Guwahati',
+        issuedAt: new Date().toISOString(),
+        validUntil: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
+        message: 'Severe rainfall alert for Guwahati and surrounding areas',
+        sourceUrl: 'https://mausam.imd.gov.in/'
+      }
+    ],
+    estimatedDamage: {
+      crops: 120,
+      properties: 300,
+      infrastructure: 200
     }
   }
 ];
@@ -293,4 +523,82 @@ export const getFloodDataForRegion = (region: string): FloodData | null => {
   
   // If no match is found, return Mumbai as default
   return floodData[0];
+};
+
+// Add missing functions for chart section
+export const getHistoricalRainfallData = (region: string) => {
+  // Return historical rainfall data for the selected region
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  
+  // Generate realistic data based on the region's risk level
+  const regionData = getFloodDataForRegion(region);
+  const riskLevelMultiplier = {
+    'low': 0.7,
+    'medium': 1.0,
+    'high': 1.3,
+    'severe': 1.6
+  };
+  
+  const multiplier = riskLevelMultiplier[regionData?.riskLevel || 'medium'];
+  
+  // Generate monthly data with a monsoon pattern (higher in Jul-Sep)
+  return months.map((month, index) => {
+    // Higher rainfall during monsoon months (Jun-Sep)
+    let baseRainfall = 0;
+    if (index >= 5 && index <= 8) {  // Jun-Sep
+      baseRainfall = Math.floor(Math.random() * 200) + 100; // 100-300mm during monsoon
+    } else if (index >= 9 && index <= 11) { // Oct-Dec
+      baseRainfall = Math.floor(Math.random() * 100) + 50; // 50-150mm post-monsoon
+    } else { // Jan-May
+      baseRainfall = Math.floor(Math.random() * 50) + 10; // 10-60mm pre-monsoon
+    }
+    
+    // Apply risk level multiplier
+    const rainfall = Math.floor(baseRainfall * multiplier);
+    
+    return {
+      month,
+      rainfall
+    };
+  });
+};
+
+export const getPredictionData = (region: string) => {
+  // Return 10-day flood prediction data
+  const regionData = getFloodDataForRegion(region);
+  const riskLevelBase = {
+    'low': 20,
+    'medium': 35,
+    'high': 50,
+    'severe': 70
+  };
+  
+  const baseValue = riskLevelBase[regionData?.riskLevel || 'medium'];
+  
+  // Generate 10 days of prediction data with some randomness
+  return Array.from({ length: 10 }, (_, i) => {
+    let trendFactor = 1;
+    
+    // Create a trend based on day
+    if (i < 3) {
+      // First 3 days - increasing trend
+      trendFactor = 1 + (i * 0.1);
+    } else if (i >= 3 && i < 6) {
+      // Middle days - peak
+      trendFactor = 1.3 - ((i - 3) * 0.05);
+    } else {
+      // Last days - decreasing trend
+      trendFactor = 1.15 - ((i - 6) * 0.1);
+    }
+    
+    // Calculate probability with some randomness
+    const probability = Math.min(95, Math.max(5, 
+      baseValue * trendFactor + (Math.random() * 10 - 5)
+    ));
+    
+    return {
+      day: i + 1,
+      probability: Number(probability.toFixed(1))
+    };
+  });
 };
