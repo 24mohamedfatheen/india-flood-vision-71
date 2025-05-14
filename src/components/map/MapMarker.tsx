@@ -29,7 +29,7 @@ const MapMarker = ({ data, map, selectedRegion, popupRef }: MapMarkerProps) => {
       iconAnchor: [12, 24]
     });
     
-    // Create and add marker
+    // Create and add marker with correct coordinates
     const marker = L.marker([data.coordinates[0], data.coordinates[1]], {
       icon: customIcon
     }).addTo(map);
@@ -106,7 +106,7 @@ const MapMarker = ({ data, map, selectedRegion, popupRef }: MapMarkerProps) => {
     if (data.region === selectedRegion) {
       const markerElement = marker.getElement();
       if (markerElement) {
-        markerElement.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
+        markerElement.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2', 'z-50');
       }
       // Open the popup if this is the selected region
       marker.openPopup();

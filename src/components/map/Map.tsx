@@ -36,7 +36,7 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
         shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
       });
       
-      // Create the Leaflet map
+      // Create the Leaflet map centered on India
       map.current = L.map(mapContainer.current).setView([20.5937, 78.9629], 5);
       
       // Add the OpenStreetMap tile layer
@@ -73,7 +73,7 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
     if (!mapLoaded || !map.current || !selectedFloodData) return;
 
     // Fly to the selected region
-    map.current.setView(
+    map.current.flyTo(
       [selectedFloodData.coordinates[0], selectedFloodData.coordinates[1]],
       7,
       { animate: true, duration: 1 }
