@@ -15,6 +15,7 @@ import SafetyBeforeFlood from "./pages/SafetyBeforeFlood";
 import SafetyDuringFlood from "./pages/SafetyDuringFlood";
 import SafetyAfterFlood from "./pages/SafetyAfterFlood";
 import Emergency from "./pages/Emergency";
+import EvacuationPlan from "./pages/EvacuationPlan";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import Settings from "./pages/Settings";
@@ -45,6 +46,7 @@ const App = () => {
                 <Route path="/safety/during-flood" element={<RequireAuth><SafetyDuringFlood /></RequireAuth>} />
                 <Route path="/safety/after-flood" element={<RequireAuth><SafetyAfterFlood /></RequireAuth>} />
                 <Route path="/emergency" element={<RequireAuth><Emergency /></RequireAuth>} />
+                <Route path="/evacuation-plan" element={<RequireAuth><EvacuationPlan /></RequireAuth>} />
                 <Route path="/about" element={<RequireAuth><About /></RequireAuth>} />
                 <Route path="/contact" element={<RequireAuth><Contact /></RequireAuth>} />
                 <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
