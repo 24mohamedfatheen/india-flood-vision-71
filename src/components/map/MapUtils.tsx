@@ -6,8 +6,9 @@ export const createFloodAreaPolygon = (floodInfo: FloodData) => {
   if (!floodInfo) return null;
   
   const [lat, lng] = floodInfo.coordinates;
+  
   // Size of the affected area in degrees (rough approximation)
-  // In a real application, you would use actual GIS data
+  // Scale based on actual affected area value
   const areaSize = Math.sqrt(floodInfo.affectedArea) * 0.01;
   
   // Create a simple circle (as a polygon) around the coordinate point

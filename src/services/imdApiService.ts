@@ -40,16 +40,37 @@ export type IMDRegionData = {
   coordinates: [number, number];
 };
 
-// Simulated IMD API service
+// Map for accurate coordinates of each city
+const cityCoordinates: Record<string, [number, number]> = {
+  'Mumbai': [19.0760, 72.8777],
+  'Delhi': [28.7041, 77.1025],
+  'Kolkata': [22.5726, 88.3639],
+  'Chennai': [13.0827, 80.2707],
+  'Bangalore': [12.9716, 77.5946],
+  'Hyderabad': [17.3850, 78.4867],
+  'Ahmedabad': [23.0225, 72.5714],
+  'Pune': [18.5204, 73.8567],
+  'Surat': [21.1702, 72.8311],
+  'Jaipur': [26.9139, 75.7873],
+  'Lucknow': [26.8467, 80.9462],
+  'Kanpur': [26.4499, 80.3319],
+  'Nagpur': [21.1458, 79.0882],
+  'Patna': [25.5941, 85.1376],
+  'Indore': [22.7196, 75.8577],
+  'Kochi': [9.9312, 76.2600],
+  'Guwahati': [26.1445, 91.7362]
+};
+
+// Simulated API service
 export const imdApiService = {
-  // Fetch data from IMD (simulated)
+  // Fetch data (simulated)
   fetchFloodData: async (): Promise<IMDRegionData[]> => {
-    console.log('Fetching data from IMD API...');
+    console.log('Fetching data from Weather Services API...');
     
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 1500));
     
-    // Generate simulated IMD data based on states and districts
+    // Generate simulated data based on states and districts
     const statesData: IMDRegionData[] = regions.map(region => {
       // Generate realistic data for each region
       const rainfall = Math.floor(Math.random() * 400) + 50; // 50-450mm
@@ -89,7 +110,12 @@ export const imdApiService = {
           'Karnataka': 'Krishna',
           'Kerala': 'Periyar',
           'Assam': 'Brahmaputra',
-          'Bihar': 'Ganga'
+          'Bihar': 'Ganga',
+          'Uttar Pradesh': 'Yamuna',
+          'Telangana': 'Krishna',
+          'Gujarat': 'Sabarmati',
+          'Rajasthan': 'Luni',
+          'Madhya Pradesh': 'Narmada'
         };
         
         const defaultRiverName = 'Local River';
@@ -111,7 +137,7 @@ export const imdApiService = {
       if (floodRiskLevel === 'high' || floodRiskLevel === 'severe') {
         activeWarnings = [{
           type: floodRiskLevel === 'severe' ? 'severe' : 'warning',
-          issuedBy: 'IMD ' + region.state,
+          issuedBy: 'Weather Services ' + region.state,
           issuedAt: new Date().toISOString(),
           validUntil: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(), // Valid for 72 hours
           message: floodRiskLevel === 'severe' 
@@ -130,6 +156,12 @@ export const imdApiService = {
         timeframe: `Next ${Math.floor(Math.random() * 3) + 1} days`
       };
       
+      // Use accurate coordinates for each city
+      const coordinates = cityCoordinates[region.label] || [
+        20.5937 + (Math.random() * 10 - 5), // Default fallback with randomization
+        78.9629 + (Math.random() * 10 - 5)
+      ];
+      
       return {
         state: region.state,
         district: region.label,
@@ -140,14 +172,11 @@ export const imdApiService = {
         riverData,
         activeWarnings,
         predictedFlood,
-        coordinates: [
-          19.0760 + (Math.random() * 10 - 5), // Randomize coordinates for each region
-          72.8777 + (Math.random() * 10 - 5)
-        ]
+        coordinates: coordinates
       };
     });
     
-    console.log('IMD data fetched successfully:', statesData);
+    console.log('Weather data fetched successfully:', statesData);
     return statesData;
   }
 };
