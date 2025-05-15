@@ -10,9 +10,11 @@ const MapComponent = lazy(() => import('./map/Map'));
 
 const Map: React.FC<{ selectedRegion: string }> = ({ selectedRegion }) => {
   return (
-    <div className="relative">
+    <div className="relative w-full">
       <Suspense fallback={<div className="w-full h-96 bg-gray-100 flex items-center justify-center rounded-lg">Loading map...</div>}>
-        <MapComponent selectedRegion={selectedRegion} />
+        <div className="w-full h-96">
+          <MapComponent selectedRegion={selectedRegion} />
+        </div>
       </Suspense>
       
       <div className="absolute bottom-4 right-4 z-10">

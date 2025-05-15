@@ -250,25 +250,27 @@ const EvacuationPlan = () => {
                       </div>
                     </div>
 
-                    {/* Map Container */}
-                    <div className="mb-4 relative">
-                      <AspectRatio ratio={16/9} className="bg-gray-100 rounded-lg overflow-hidden mb-2">
-                        {/* This would be replaced with an actual Google Maps embed */}
-                        <div className="w-full h-full bg-blue-50 flex items-center justify-center">
-                          <p className="text-blue-800 px-4 text-center">
-                            Map showing evacuation route from your location to {route.destination}
-                          </p>
-                        </div>
-                      </AspectRatio>
-                      <a 
-                        href={route.googleMapsLink} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="absolute bottom-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-700 transition-colors flex items-center"
-                      >
-                        <Navigation className="h-4 w-4 mr-2" />
-                        Open in Google Maps
-                      </a>
+                    {/* Map Container - FIXED HEIGHT AND POSITIONING */}
+                    <div className="mb-4 relative h-64">
+                      <div className="absolute inset-0 bg-blue-50 rounded-lg overflow-hidden">
+                        <AspectRatio ratio={16/9} className="h-full">
+                          {/* This would be replaced with an actual Google Maps embed */}
+                          <div className="w-full h-full bg-blue-50 flex items-center justify-center">
+                            <p className="text-blue-800 px-4 text-center">
+                              Map showing evacuation route from your location to {route.destination}
+                            </p>
+                          </div>
+                        </AspectRatio>
+                        <a 
+                          href={route.googleMapsLink} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="absolute bottom-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-700 transition-colors flex items-center"
+                        >
+                          <Navigation className="h-4 w-4 mr-2" />
+                          Open in Google Maps
+                        </a>
+                      </div>
                     </div>
 
                     {/* Directions */}
