@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
@@ -14,6 +13,7 @@ import { useToast } from '../hooks/use-toast';
 import { Clock, RefreshCw, AlertTriangle, LogIn, LogOut } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../context/AuthContext';
+import { Skeleton } from '../components/ui/skeleton';
 
 const Index = () => {
   const [selectedRegion, setSelectedRegion] = useState('mumbai');
@@ -269,10 +269,36 @@ const Index = () => {
               </div>
               
               {/* Right side map */}
-              <div className="lg:sticky lg:top-6 self-start">
-                <div className="bg-white p-4 rounded-lg shadow">
+              <div className="lg:col-span-1">
+                <div className="sticky top-6 bg-white p-4 rounded-lg shadow">
                   <h2 className="text-lg font-medium mb-2">Flood Risk Map</h2>
-                  <Map selectedRegion={selectedRegion} className="mb-4" />
+                  <Map 
+                    selectedRegion={selectedRegion} 
+                    className="mb-4"
+                    aspectRatio={4/3}
+                  />
+                  
+                  <div className="mt-4">
+                    <h3 className="text-sm font-medium mb-2">Risk Levels</h3>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="flex items-center">
+                        <span className="w-3 h-3 bg-green-500 rounded-full mr-1"></span>
+                        <span>Low Risk</span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="w-3 h-3 bg-yellow-500 rounded-full mr-1"></span>
+                        <span>Medium Risk</span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="w-3 h-3 bg-orange-500 rounded-full mr-1"></span>
+                        <span>High Risk</span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="w-3 h-3 bg-red-500 rounded-full mr-1"></span>
+                        <span>Severe Risk</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

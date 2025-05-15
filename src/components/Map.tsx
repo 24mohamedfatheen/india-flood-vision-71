@@ -9,13 +9,18 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 // We're using lazy loading to ensure Leaflet only loads in the browser
 const MapComponent = lazy(() => import('./map/Map'));
 
-const Map: React.FC<{ selectedRegion: string; className?: string }> = ({ 
+const Map: React.FC<{ 
+  selectedRegion: string; 
+  className?: string;
+  aspectRatio?: number;
+}> = ({ 
   selectedRegion, 
-  className = "" 
+  className = "",
+  aspectRatio = 16/9
 }) => {
   return (
     <div className={`relative w-full ${className}`}>
-      <AspectRatio ratio={16/9} className="w-full">
+      <AspectRatio ratio={aspectRatio} className="w-full">
         <Suspense fallback={<div className="w-full h-full bg-gray-100 flex items-center justify-center rounded-lg">Loading map...</div>}>
           <div className="w-full h-full">
             <MapComponent selectedRegion={selectedRegion} />
