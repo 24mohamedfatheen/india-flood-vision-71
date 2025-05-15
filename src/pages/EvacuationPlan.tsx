@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -216,9 +215,11 @@ const EvacuationPlan = () => {
           </div>
         </div>
 
+        {/* Reorganized layout - Content on left, Map on right */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Left column (2/3 width) - Details and evacuation plan */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl shadow-md overflow-hidden">
+            <div className="bg-white rounded-xl shadow-md overflow-hidden mb-6">
               <div className="bg-blue-700 text-white p-4">
                 <h2 className="text-xl font-semibold flex items-center">
                   <Navigation className="h-5 w-5 mr-2" />
@@ -250,29 +251,6 @@ const EvacuationPlan = () => {
                       </div>
                     </div>
 
-                    {/* Map Container - FIXED HEIGHT AND POSITIONING */}
-                    <div className="mb-4 relative h-64">
-                      <div className="absolute inset-0 bg-blue-50 rounded-lg overflow-hidden">
-                        <AspectRatio ratio={16/9} className="h-full">
-                          {/* This would be replaced with an actual Google Maps embed */}
-                          <div className="w-full h-full bg-blue-50 flex items-center justify-center">
-                            <p className="text-blue-800 px-4 text-center">
-                              Map showing evacuation route from your location to {route.destination}
-                            </p>
-                          </div>
-                        </AspectRatio>
-                        <a 
-                          href={route.googleMapsLink} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="absolute bottom-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-700 transition-colors flex items-center"
-                        >
-                          <Navigation className="h-4 w-4 mr-2" />
-                          Open in Google Maps
-                        </a>
-                      </div>
-                    </div>
-
                     {/* Directions */}
                     <div className="mb-4">
                       <h4 className="font-semibold text-gray-700 mb-2">Step-by-Step Directions:</h4>
@@ -297,13 +275,26 @@ const EvacuationPlan = () => {
                         </ul>
                       </div>
                     )}
+
+                    {/* Google Maps link */}
+                    <div className="mt-4">
+                      <a 
+                        href={route.googleMapsLink} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="inline-flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-700 transition-colors"
+                      >
+                        <Navigation className="h-4 w-4 mr-2" />
+                        Open in Google Maps
+                      </a>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* What to do if unable to evacuate */}
-            <div className="bg-white rounded-xl shadow-md overflow-hidden mt-6">
+            <div className="bg-white rounded-xl shadow-md overflow-hidden mb-6">
               <div className="bg-red-600 text-white p-4">
                 <h2 className="text-xl font-semibold">If You Cannot Evacuate</h2>
               </div>
@@ -342,11 +333,9 @@ const EvacuationPlan = () => {
                 </ol>
               </div>
             </div>
-          </div>
 
-          <div className="space-y-6">
             {/* Essential Items */}
-            <div className="bg-white rounded-xl shadow-md overflow-hidden">
+            <div className="bg-white rounded-xl shadow-md overflow-hidden mb-6">
               <div className="bg-green-600 text-white p-4">
                 <h2 className="text-xl font-semibold">Essential Items to Take</h2>
               </div>
@@ -386,9 +375,53 @@ const EvacuationPlan = () => {
                 </ul>
               </div>
             </div>
+          </div>
+
+          {/* Right column (1/3 width) - Map and notes */}
+          <div className="lg:col-span-1">
+            {/* Map Container - SMALLER SIZE AND POSITIONED ON RIGHT */}
+            <div className="bg-white rounded-xl shadow-md overflow-hidden sticky top-4">
+              <div className="bg-blue-700 text-white p-4">
+                <h2 className="text-lg font-semibold">Evacuation Map</h2>
+              </div>
+              <div className="p-4">
+                <div className="relative rounded-lg overflow-hidden">
+                  <AspectRatio ratio={4/3} className="h-64">
+                    {/* This would be replaced with an actual Google Maps embed */}
+                    <div className="w-full h-full bg-blue-50 flex items-center justify-center">
+                      <p className="text-blue-800 px-4 text-center">
+                        Map showing evacuation routes from your location
+                      </p>
+                    </div>
+                  </AspectRatio>
+                </div>
+                
+                <div className="mt-4 bg-blue-50 rounded-xl p-4 border border-blue-100">
+                  <h3 className="text-md font-semibold text-blue-800 mb-3">Risk Levels</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center">
+                      <span className="inline-block w-3 h-3 rounded-full bg-green-500 mr-1"></span>
+                      <span className="text-xs">Low</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="inline-block w-3 h-3 rounded-full bg-amber-400 mr-1"></span>
+                      <span className="text-xs">Medium</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="inline-block w-3 h-3 rounded-full bg-orange-500 mr-1"></span>
+                      <span className="text-xs">High</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="inline-block w-3 h-3 rounded-full bg-red-500 mr-1"></span>
+                      <span className="text-xs">Severe</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             {/* Important Notes */}
-            <div className="bg-blue-50 rounded-xl p-6 border border-blue-100">
+            <div className="bg-blue-50 rounded-xl p-6 border border-blue-100 mt-6">
               <h2 className="text-lg font-semibold text-blue-800 mb-3">Important Notes</h2>
               <ul className="space-y-2 text-blue-800">
                 <li className="flex items-start">
