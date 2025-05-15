@@ -259,16 +259,21 @@ const Index = () => {
             {/* Add Data Source Info at the top */}
             <DataSourceInfo />
             
-            <Map selectedRegion={selectedRegion} />
-            
-            <FloodStats floodData={floodData} />
-            
+            {/* New layout: left side content, right side map */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-              <div className="lg:col-span-2">
+              <div className="lg:col-span-2 space-y-6">
+                {/* Left side content */}
+                <FloodStats floodData={floodData} />
                 <ChartSection selectedRegion={selectedRegion} />
-              </div>
-              <div>
                 <PredictionCard floodData={floodData} />
+              </div>
+              
+              {/* Right side map */}
+              <div className="lg:sticky lg:top-6 self-start">
+                <div className="bg-white p-4 rounded-lg shadow">
+                  <h2 className="text-lg font-medium mb-2">Flood Risk Map</h2>
+                  <Map selectedRegion={selectedRegion} className="mb-4" />
+                </div>
               </div>
             </div>
             

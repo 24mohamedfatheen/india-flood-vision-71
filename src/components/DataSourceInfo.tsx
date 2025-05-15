@@ -1,15 +1,22 @@
 
 import React from 'react';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { Info, Database, Globe } from 'lucide-react';
 
 const DataSourceInfo = () => {
   return (
     <div className="bg-white rounded-lg p-4 shadow-sm mb-6">
-      <h2 className="text-lg font-semibold mb-3 text-primary">Real-Time Data Integration</h2>
+      <div className="flex items-center mb-2">
+        <Info className="h-5 w-5 mr-2 text-blue-600" />
+        <h2 className="text-lg font-semibold text-primary">Real-Time Data Integration</h2>
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <h3 className="text-md font-medium mb-2">About Our Data</h3>
+          <h3 className="text-md font-medium mb-2 flex items-center">
+            <Database className="h-4 w-4 mr-2 text-blue-600" />
+            About Our Data
+          </h3>
           <p className="text-sm text-muted-foreground mb-3">
             The India Flood Vision Dashboard pulls data directly from official meteorological APIs. 
             This data is organized by states and districts to provide localized flood information and warnings.
@@ -36,7 +43,10 @@ const DataSourceInfo = () => {
         </div>
         
         <div>
-          <h3 className="text-md font-medium mb-2">Data Flow Architecture</h3>
+          <h3 className="text-md font-medium mb-2 flex items-center">
+            <Globe className="h-4 w-4 mr-2 text-blue-600" />
+            Data Flow Architecture
+          </h3>
           <div className="border border-border p-2 rounded-md mb-4">
             <AspectRatio ratio={16/9} className="bg-muted">
               <div className="h-full w-full flex flex-col">
@@ -86,6 +96,13 @@ const DataSourceInfo = () => {
             </div>
           </div>
         </div>
+      </div>
+      
+      <div className="mt-4 pt-4 border-t border-gray-100">
+        <p className="text-sm text-blue-600 mb-2">
+          For more detailed information about our data sources and integration methods, please 
+          visit our <a href="/about" className="font-medium underline">About page</a>.
+        </p>
       </div>
     </div>
   );

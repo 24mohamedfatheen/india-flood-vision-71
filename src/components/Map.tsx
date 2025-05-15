@@ -4,18 +4,24 @@ import { lazy, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Navigation } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
 
 // We're using lazy loading to ensure Leaflet only loads in the browser
 const MapComponent = lazy(() => import('./map/Map'));
 
-const Map: React.FC<{ selectedRegion: string }> = ({ selectedRegion }) => {
+const Map: React.FC<{ selectedRegion: string; className?: string }> = ({ 
+  selectedRegion, 
+  className = "" 
+}) => {
   return (
-    <div className="relative w-full">
-      <Suspense fallback={<div className="w-full h-96 bg-gray-100 flex items-center justify-center rounded-lg">Loading map...</div>}>
-        <div className="w-full h-96">
-          <MapComponent selectedRegion={selectedRegion} />
-        </div>
-      </Suspense>
+    <div className={`relative w-full ${className}`}>
+      <AspectRatio ratio={16/9} className="w-full">
+        <Suspense fallback={<div className="w-full h-full bg-gray-100 flex items-center justify-center rounded-lg">Loading map...</div>}>
+          <div className="w-full h-full">
+            <MapComponent selectedRegion={selectedRegion} />
+          </div>
+        </Suspense>
+      </AspectRatio>
       
       <div className="absolute bottom-4 right-4 z-10">
         <Link to="/evacuation-plan">

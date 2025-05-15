@@ -28,7 +28,6 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
     
     try {
       // Fix Leaflet icon issues with webpack
-      // This is needed because Leaflet's default icons reference image files that aren't properly bundled
       delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
         iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
@@ -37,7 +36,10 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
       });
       
       // Create the Leaflet map centered on India
-      map.current = L.map(mapContainer.current).setView([20.5937, 78.9629], 5);
+      map.current = L.map(mapContainer.current, {
+        attributionControl: false,
+        zoomControl: false
+      }).setView([20.5937, 78.9629], 5);
       
       // Add the OpenStreetMap tile layer
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -47,6 +49,9 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
       
       // Add flood areas layer group
       layersRef.current['floodAreas'] = L.layerGroup().addTo(map.current);
+      
+      // Add state boundaries layer group
+      layersRef.current['stateBoundaries'] = L.layerGroup().addTo(map.current);
       
       setMapLoaded(true);
       
@@ -72,7 +77,7 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
   useEffect(() => {
     if (!mapLoaded || !map.current || !selectedFloodData) return;
 
-    // Fly to the selected region
+    // Fly to the selected region with a closer zoom for smaller viewport
     map.current.flyTo(
       [selectedFloodData.coordinates[0], selectedFloodData.coordinates[1]],
       7,
@@ -81,6 +86,9 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
 
     // Update the flood affected areas
     updateFloodAreas();
+
+    // Add state boundary highlighting
+    updateStateBoundary();
 
   }, [selectedRegion, mapLoaded, selectedFloodData]);
 
@@ -128,6 +136,49 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
       }
     });
   };
+  
+  // Add state boundary highlighting for the selected region
+  const updateStateBoundary = () => {
+    if (!map.current || !layersRef.current['stateBoundaries'] || !selectedFloodData) return;
+    
+    // Clear existing boundaries
+    const stateBoundariesLayer = layersRef.current['stateBoundaries'] as L.LayerGroup;
+    stateBoundariesLayer.clearLayers();
+    
+    // Create a simplified state boundary (placeholder - in a real app, you'd use GeoJSON data for state boundaries)
+    // This is a simplified circle representing the state boundary for demo purposes
+    const stateCenter = selectedFloodData.coordinates;
+    const stateRadius = Math.sqrt(selectedFloodData.affectedArea) * 500; // Scale based on affected area
+    
+    // Get color based on risk level
+    const stateColor = 
+      selectedFloodData.riskLevel === 'severe' ? '#F44336' :
+      selectedFloodData.riskLevel === 'high' ? '#FF9800' :
+      selectedFloodData.riskLevel === 'medium' ? '#FFC107' : 
+      '#4CAF50';
+    
+    // Create circle representing state with color based on risk level
+    const stateCircle = L.circle(stateCenter, {
+      radius: stateRadius,
+      color: stateColor,
+      weight: 2,
+      opacity: 0.8,
+      fill: true,
+      fillColor: stateColor,
+      fillOpacity: 0.15,
+    }).addTo(stateBoundariesLayer);
+    
+    // Add state label
+    const stateName = selectedFloodData.state;
+    const icon = L.divIcon({
+      className: 'state-label',
+      html: `<div style="background-color: white; padding: 3px 5px; border-radius: 3px; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.3);">${stateName}</div>`,
+      iconSize: [100, 20],
+      iconAnchor: [50, 10]
+    });
+    
+    L.marker(stateCenter, { icon: icon }).addTo(stateBoundariesLayer);
+  };
 
   // Handle zoom controls
   const handleZoomIn = () => {
@@ -160,11 +211,11 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
   };
 
   return (
-    <div className="map-container mb-6 border rounded-lg overflow-hidden relative">
+    <div className="map-container border rounded-lg overflow-hidden relative">
       <div
         ref={mapContainer}
         className="absolute inset-0 w-full h-full"
-        style={{ minHeight: "400px" }}
+        style={{ minHeight: "300px" }}
       />
       
       <MapAttribution lastUpdate={lastUpdate} />
