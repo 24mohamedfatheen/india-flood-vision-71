@@ -20,6 +20,7 @@ import About from "./pages/About";
 import Contact from "./pages/Contact";
 import Settings from "./pages/Settings";
 import { AuthProvider } from "./context/AuthContext";
+import { LanguageProvider } from "./context/LanguageContext";
 import RequireAuth from "./components/RequireAuth";
 
 // Create a new QueryClient instance
@@ -33,28 +34,30 @@ const App = () => {
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <AuthProvider>
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                
-                {/* Protected routes */}
-                <Route path="/" element={<RequireAuth><Index /></RequireAuth>} />
-                <Route path="/admin" element={<RequireAuth adminOnly={true}><AdminDashboard /></RequireAuth>} />
-                <Route path="/emergency-reports" element={<RequireAuth adminOnly={true}><EmergencyReports /></RequireAuth>} />
-                <Route path="/safety" element={<RequireAuth><SafetyTips /></RequireAuth>} />
-                <Route path="/safety/before-flood" element={<RequireAuth><SafetyBeforeFlood /></RequireAuth>} />
-                <Route path="/safety/during-flood" element={<RequireAuth><SafetyDuringFlood /></RequireAuth>} />
-                <Route path="/safety/after-flood" element={<RequireAuth><SafetyAfterFlood /></RequireAuth>} />
-                <Route path="/emergency" element={<RequireAuth><Emergency /></RequireAuth>} />
-                <Route path="/evacuation-plan" element={<RequireAuth><EvacuationPlan /></RequireAuth>} />
-                <Route path="/about" element={<RequireAuth><About /></RequireAuth>} />
-                <Route path="/contact" element={<RequireAuth><Contact /></RequireAuth>} />
-                <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
-                
-                {/* Catch-all route */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </AuthProvider>
+            <LanguageProvider>
+              <AuthProvider>
+                <Routes>
+                  <Route path="/login" element={<Login />} />
+                  
+                  {/* Protected routes */}
+                  <Route path="/" element={<RequireAuth><Index /></RequireAuth>} />
+                  <Route path="/admin" element={<RequireAuth adminOnly={true}><AdminDashboard /></RequireAuth>} />
+                  <Route path="/emergency-reports" element={<RequireAuth adminOnly={true}><EmergencyReports /></RequireAuth>} />
+                  <Route path="/safety" element={<RequireAuth><SafetyTips /></RequireAuth>} />
+                  <Route path="/safety/before-flood" element={<RequireAuth><SafetyBeforeFlood /></RequireAuth>} />
+                  <Route path="/safety/during-flood" element={<RequireAuth><SafetyDuringFlood /></RequireAuth>} />
+                  <Route path="/safety/after-flood" element={<RequireAuth><SafetyAfterFlood /></RequireAuth>} />
+                  <Route path="/emergency" element={<RequireAuth><Emergency /></RequireAuth>} />
+                  <Route path="/evacuation-plan" element={<RequireAuth><EvacuationPlan /></RequireAuth>} />
+                  <Route path="/about" element={<RequireAuth><About /></RequireAuth>} />
+                  <Route path="/contact" element={<RequireAuth><Contact /></RequireAuth>} />
+                  <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
+                  
+                  {/* Catch-all route */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </AuthProvider>
+            </LanguageProvider>
           </BrowserRouter>
         </TooltipProvider>
       </QueryClientProvider>
