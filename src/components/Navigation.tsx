@@ -2,14 +2,14 @@
 import React from 'react';
 import { Menu, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '../context/LanguageContext';
 
 const Navigation = () => {
   const { t } = useLanguage();
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
   
   const navLinks = [
     { name: t('nav.home'), href: '/' },
