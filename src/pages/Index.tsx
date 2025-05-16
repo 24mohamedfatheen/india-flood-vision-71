@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
@@ -259,23 +260,22 @@ const Index = () => {
             {/* Add Data Source Info at the top */}
             <DataSourceInfo />
             
-            {/* New layout: left side content, right side map */}
+            {/* New layout: Map in center, content on sides */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-              <div className="lg:col-span-2 space-y-6">
-                {/* Left side content */}
+              {/* Left side content */}
+              <div className="lg:col-span-1 space-y-6">
                 <FloodStats floodData={floodData} />
-                <ChartSection selectedRegion={selectedRegion} />
                 <PredictionCard floodData={floodData} />
               </div>
               
-              {/* Right side map */}
+              {/* Center map */}
               <div className="lg:col-span-1">
-                <div className="sticky top-6 bg-white p-4 rounded-lg shadow">
+                <div className="bg-white p-4 rounded-lg shadow">
                   <h2 className="text-lg font-medium mb-2">Flood Risk Map</h2>
                   <Map 
                     selectedRegion={selectedRegion} 
                     className="mb-4"
-                    aspectRatio={4/3}
+                    aspectRatio={1}
                   />
                   
                   <div className="mt-4">
@@ -300,6 +300,38 @@ const Index = () => {
                     </div>
                   </div>
                 </div>
+                
+                {/* Add Dashboard under Home page */}
+                <div className="bg-white p-4 rounded-lg shadow mt-6">
+                  <h2 className="text-lg font-medium mb-4">Home Dashboard</h2>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-blue-50 p-3 rounded-md">
+                      <h3 className="text-sm font-medium text-blue-700">Alerts</h3>
+                      <p className="text-2xl font-bold text-blue-800">{Math.floor(Math.random() * 10)}</p>
+                      <p className="text-xs text-blue-600">Active warnings</p>
+                    </div>
+                    <div className="bg-green-50 p-3 rounded-md">
+                      <h3 className="text-sm font-medium text-green-700">Safe Zones</h3>
+                      <p className="text-2xl font-bold text-green-800">{Math.floor(Math.random() * 20) + 5}</p>
+                      <p className="text-xs text-green-600">Available shelters</p>
+                    </div>
+                    <div className="bg-orange-50 p-3 rounded-md">
+                      <h3 className="text-sm font-medium text-orange-700">Rainfall</h3>
+                      <p className="text-2xl font-bold text-orange-800">{Math.floor(Math.random() * 100) + 10}mm</p>
+                      <p className="text-xs text-orange-600">Last 24 hours</p>
+                    </div>
+                    <div className="bg-purple-50 p-3 rounded-md">
+                      <h3 className="text-sm font-medium text-purple-700">River Level</h3>
+                      <p className="text-2xl font-bold text-purple-800">{(Math.random() * 5 + 2).toFixed(1)}m</p>
+                      <p className="text-xs text-purple-600">Current height</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Right side content */}
+              <div className="lg:col-span-1 space-y-6">
+                <ChartSection selectedRegion={selectedRegion} />
               </div>
             </div>
             
