@@ -215,33 +215,6 @@ const EvacuationPlan = () => {
           </div>
         </div>
 
-        {/* Add Evacuation Dashboard */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Evacuation Dashboard</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-red-50 p-4 rounded-lg border border-red-100">
-              <h3 className="text-sm font-medium text-red-800">Evacuation Status</h3>
-              <p className="text-2xl font-bold text-red-600">Active</p>
-              <p className="text-xs text-red-500 mt-1">Updated 15 mins ago</p>
-            </div>
-            <div className="bg-amber-50 p-4 rounded-lg border border-amber-100">
-              <h3 className="text-sm font-medium text-amber-800">Warning Level</h3>
-              <p className="text-2xl font-bold text-amber-600">High</p>
-              <p className="text-xs text-amber-500 mt-1">Immediate action needed</p>
-            </div>
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-              <h3 className="text-sm font-medium text-blue-800">Safe Zones</h3>
-              <p className="text-2xl font-bold text-blue-600">4 nearby</p>
-              <p className="text-xs text-blue-500 mt-1">Within 5km radius</p>
-            </div>
-            <div className="bg-green-50 p-4 rounded-lg border border-green-100">
-              <h3 className="text-sm font-medium text-green-800">Resources</h3>
-              <p className="text-2xl font-bold text-green-600">Available</p>
-              <p className="text-xs text-green-500 mt-1">Food, water, medical</p>
-            </div>
-          </div>
-        </div>
-
         {/* Reorganized layout - Content on left, Map on right */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Left column (2/3 width) - Details and evacuation plan */}
