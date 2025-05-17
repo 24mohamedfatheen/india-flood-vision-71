@@ -7,7 +7,6 @@ import FloodStats from '../components/FloodStats';
 import ChartSection from '../components/ChartSection';
 import PredictionCard from '../components/PredictionCard';
 import HistoricalFloodData from '../components/HistoricalFloodData';
-import DataSourceInfo from '../components/DataSourceInfo';
 import { getFloodDataForRegion, fetchImdData } from '../data/floodData';
 import { useToast } from '../hooks/use-toast';
 import { Clock, RefreshCw, AlertTriangle, LogIn, LogOut } from 'lucide-react';
@@ -256,9 +255,6 @@ const Index = () => {
           </div>
         ) : (
           <>
-            {/* Add Data Source Info at the top */}
-            <DataSourceInfo />
-            
             {/* New layout: left side content, right side map */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
               <div className="lg:col-span-2 space-y-6">
