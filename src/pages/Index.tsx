@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
@@ -209,12 +210,22 @@ const Index = () => {
           </div>
         </div>
         
-        <div className="mb-6 flex items-center justify-between flex-wrap">
-          <RegionSelector 
-            selectedRegion={selectedRegion}
-            onRegionChange={handleRegionChange}
+        {/* Region Selector first */}
+        <RegionSelector 
+          selectedRegion={selectedRegion}
+          onRegionChange={handleRegionChange}
+        />
+        
+        {/* Map now placed between region selector and timestamps/refresh controls */}
+        <div className="mb-6">
+          <Map 
+            selectedRegion={selectedRegion} 
+            className="w-full"
+            aspectRatio={16/9}
           />
-          
+        </div>
+        
+        <div className="mb-6 flex items-center justify-between flex-wrap">
           <div className="flex items-center mt-3 sm:mt-0 space-x-2">
             <div className={`timestamp-badge ${dataFreshness === 'stale' ? 'bg-yellow-50 text-yellow-700' : ''}`}>
               <Clock className="h-3 w-3 mr-1" />
@@ -255,7 +266,7 @@ const Index = () => {
           </div>
         ) : (
           <>
-            {/* New layout: left side content, right side map */}
+            {/* Updated layout: content sections */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
               <div className="lg:col-span-2 space-y-6">
                 {/* Left side content */}
@@ -264,15 +275,10 @@ const Index = () => {
                 <PredictionCard floodData={floodData} />
               </div>
               
-              {/* Right side map */}
+              {/* Right side content - additional info, no map here anymore */}
               <div className="lg:col-span-1">
                 <div className="sticky top-6 bg-white p-4 rounded-lg shadow">
-                  <h2 className="text-lg font-medium mb-2">Flood Risk Map</h2>
-                  <Map 
-                    selectedRegion={selectedRegion} 
-                    className="mb-4"
-                    aspectRatio={4/3}
-                  />
+                  <h2 className="text-lg font-medium mb-2">Flood Risk Information</h2>
                   
                   <div className="mt-4">
                     <h3 className="text-sm font-medium mb-2">Risk Levels</h3>
