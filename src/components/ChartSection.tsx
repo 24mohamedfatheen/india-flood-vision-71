@@ -241,11 +241,6 @@ const ChartSection: React.FC<ChartSectionProps> = ({ selectedRegion }) => {
                 name="Flood Probability (%)"
                 stroke="#FF9800"
                 strokeWidth={2}
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
-                // Use dynamic color based on probability value
-                stroke="#FF9800"
-                strokeWidth={2}
                 dot={(props) => {
                   const { cx, cy, payload } = props;
                   const color = getRiskLevelColor(payload.probability);

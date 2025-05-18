@@ -22,7 +22,7 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
   const [lastUpdate, setLastUpdate] = useState<string>('');
   const selectedFloodData = getFloodDataForRegion(selectedRegion);
   const { toast } = useToast();
-  const [statePolygons, setStatePolygons] = useState<L.SVGOverlay[]>([]);
+  const [statePolygons, setStatePolygons] = useState<L.Layer[]>([]);
 
   // Initialize map
   useEffect(() => {
@@ -199,12 +199,18 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
     const stateOutlinesLayer = layersRef.current['stateOutlines'] as L.LayerGroup;
     stateOutlinesLayer.clearLayers();
     
-    // Clear previous state polygons
+    // Clean up previous state polygons
     statePolygons.forEach(polygon => {
-      if (map.current) map.current.removeLayer(polygon);
+      if (map.current && polygon) {
+        try {
+          map.current.removeLayer(polygon);
+        } catch (err) {
+          console.error("Error removing layer:", err);
+        }
+      }
     });
     
-    const newStatePolygons: L.SVGOverlay[] = [];
+    const newStatePolygons: L.Layer[] = [];
     
     // For each state outline in our data
     stateOutlines.forEach(state => {
@@ -221,37 +227,44 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
       
       const color = getRiskLevelColor(riskLevel);
       
-      // Create SVG for the state outline
-      const svg = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="230" height="230">
-          <path d="${state.path}" fill="${color}" fill-opacity="0.4" stroke="${color}" stroke-width="2" />
-        </svg>
-      `;
-      
-      // Create an SVG overlay
-      const svgOverlay = L.svgOverlay(
-        svg, 
-        [[0, 0], [230, 230]], 
-        { interactive: true, bubblingMouseEvents: true }
-      );
-      
-      // Add popup with state info
-      svgOverlay.bindTooltip(state.name + (stateFloodData ? ` - ${riskLevel.toUpperCase()} risk` : ' - No data'));
-      
-      if (stateFloodData) {
-        svgOverlay.bindPopup(`
-          <div class="font-bold">${state.name}</div>
-          <div>Risk Level: ${riskLevel.toUpperCase()}</div>
-          ${stateFloodData ? `<div>Affected Area: ${stateFloodData.affectedArea} km²</div>` : ''}
-          ${stateFloodData ? `<div>Population: ${stateFloodData.populationAffected.toLocaleString()}</div>` : ''}
-        `);
+      try {
+        // Create a proper Leaflet DivIcon instead of using raw SVG
+        const stateIcon = L.divIcon({
+          className: 'state-outline-icon',
+          html: `<svg xmlns="http://www.w3.org/2000/svg" width="230" height="230">
+                   <path d="${state.path}" fill="${color}" fill-opacity="0.4" stroke="${color}" stroke-width="2" />
+                 </svg>`,
+          iconSize: [230, 230],
+          iconAnchor: [115, 115]
+        });
+        
+        // Create a marker with the state icon
+        const marker = L.marker([20.5937, 78.9629], { 
+          icon: stateIcon,
+          interactive: true
+        });
+        
+        // Bind tooltip and popup
+        if (stateFloodData) {
+          marker.bindTooltip(state.name + ` - ${riskLevel.toUpperCase()} risk`);
+          marker.bindPopup(`
+            <div class="font-bold">${state.name}</div>
+            <div>Risk Level: ${riskLevel.toUpperCase()}</div>
+            <div>Affected Area: ${stateFloodData.affectedArea} km²</div>
+            <div>Population: ${stateFloodData.populationAffected.toLocaleString()}</div>
+          `);
+        } else {
+          marker.bindTooltip(state.name + ' - No data');
+        }
+        
+        // Add to the layer group
+        marker.addTo(stateOutlinesLayer);
+        
+        // Store the marker
+        newStatePolygons.push(marker);
+      } catch (err) {
+        console.error(`Error creating outline for state ${state.name}:`, err);
       }
-      
-      // Store the polygon
-      newStatePolygons.push(svgOverlay);
-      
-      // Add to the layer group
-      svgOverlay.addTo(stateOutlinesLayer);
     });
     
     // Update state
