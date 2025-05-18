@@ -10,6 +10,7 @@ import MapLegend from './MapLegend';
 import MapAttribution from './MapAttribution';
 import { createFloodAreaPolygon } from './MapUtils';
 import { MapProps } from './types';
+import { stateOutlines } from '../../data/stateOutlines';
 
 const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -21,6 +22,7 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
   const [lastUpdate, setLastUpdate] = useState<string>('');
   const selectedFloodData = getFloodDataForRegion(selectedRegion);
   const { toast } = useToast();
+  const [statePolygons, setStatePolygons] = useState<L.SVGOverlay[]>([]);
 
   // Initialize map
   useEffect(() => {
@@ -52,6 +54,9 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
       
       // Add state boundaries layer group
       layersRef.current['stateBoundaries'] = L.layerGroup().addTo(map.current);
+      
+      // Add state outlines layer group
+      layersRef.current['stateOutlines'] = L.layerGroup().addTo(map.current);
       
       setMapLoaded(true);
       
@@ -90,6 +95,9 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
     // Add state boundary highlighting
     updateStateBoundary();
 
+    // Render state outlines with risk colors
+    renderStateOutlines();
+
   }, [selectedRegion, mapLoaded, selectedFloodData]);
 
   // Update flood areas on map
@@ -107,11 +115,7 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
       const geoJsonPolygon = createFloodAreaPolygon(data);
       if (geoJsonPolygon) {
         // Create Leaflet polygon from GeoJSON
-        const color = 
-          data.riskLevel === 'severe' ? '#F44336' :
-          data.riskLevel === 'high' ? '#FF9800' :
-          data.riskLevel === 'medium' ? '#FFC107' : 
-          '#4CAF50';
+        const color = getRiskLevelColor(data.riskLevel);
         
         const polygon = L.geoJSON(geoJsonPolygon as any, {
           style: {
@@ -137,6 +141,17 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
     });
   };
   
+  // Helper function to get color based on risk level
+  const getRiskLevelColor = (riskLevel: 'low' | 'medium' | 'high' | 'severe'): string => {
+    switch (riskLevel) {
+      case 'severe': return '#F44336'; // Red
+      case 'high': return '#FF9800';   // Orange
+      case 'medium': return '#FFC107'; // Yellow
+      case 'low': return '#4CAF50';    // Green
+      default: return '#4CAF50';
+    }
+  };
+  
   // Add state boundary highlighting for the selected region
   const updateStateBoundary = () => {
     if (!map.current || !layersRef.current['stateBoundaries'] || !selectedFloodData) return;
@@ -151,11 +166,7 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
     const stateRadius = Math.sqrt(selectedFloodData.affectedArea) * 500; // Scale based on affected area
     
     // Get color based on risk level
-    const stateColor = 
-      selectedFloodData.riskLevel === 'severe' ? '#F44336' :
-      selectedFloodData.riskLevel === 'high' ? '#FF9800' :
-      selectedFloodData.riskLevel === 'medium' ? '#FFC107' : 
-      '#4CAF50';
+    const stateColor = getRiskLevelColor(selectedFloodData.riskLevel);
     
     // Create circle representing state with color based on risk level
     const stateCircle = L.circle(stateCenter, {
@@ -178,6 +189,73 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
     });
     
     L.marker(stateCenter, { icon: icon }).addTo(stateBoundariesLayer);
+  };
+
+  // Render state outlines with risk-based colors
+  const renderStateOutlines = () => {
+    if (!map.current || !layersRef.current['stateOutlines']) return;
+    
+    // Clear existing state outlines
+    const stateOutlinesLayer = layersRef.current['stateOutlines'] as L.LayerGroup;
+    stateOutlinesLayer.clearLayers();
+    
+    // Clear previous state polygons
+    statePolygons.forEach(polygon => {
+      if (map.current) map.current.removeLayer(polygon);
+    });
+    
+    const newStatePolygons: L.SVGOverlay[] = [];
+    
+    // For each state outline in our data
+    stateOutlines.forEach(state => {
+      // Find flood data for this state if available
+      const stateFloodData = floodData.find(data => 
+        data.state.toLowerCase() === state.name.toLowerCase()
+      );
+      
+      // Determine the risk level and color
+      let riskLevel: 'low' | 'medium' | 'high' | 'severe' = 'low';
+      if (stateFloodData) {
+        riskLevel = stateFloodData.riskLevel;
+      }
+      
+      const color = getRiskLevelColor(riskLevel);
+      
+      // Create SVG for the state outline
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="230" height="230">
+          <path d="${state.path}" fill="${color}" fill-opacity="0.4" stroke="${color}" stroke-width="2" />
+        </svg>
+      `;
+      
+      // Create an SVG overlay
+      const svgOverlay = L.svgOverlay(
+        svg, 
+        [[0, 0], [230, 230]], 
+        { interactive: true, bubblingMouseEvents: true }
+      );
+      
+      // Add popup with state info
+      svgOverlay.bindTooltip(state.name + (stateFloodData ? ` - ${riskLevel.toUpperCase()} risk` : ' - No data'));
+      
+      if (stateFloodData) {
+        svgOverlay.bindPopup(`
+          <div class="font-bold">${state.name}</div>
+          <div>Risk Level: ${riskLevel.toUpperCase()}</div>
+          ${stateFloodData ? `<div>Affected Area: ${stateFloodData.affectedArea} km²</div>` : ''}
+          ${stateFloodData ? `<div>Population: ${stateFloodData.populationAffected.toLocaleString()}</div>` : ''}
+        `);
+      }
+      
+      // Store the polygon
+      newStatePolygons.push(svgOverlay);
+      
+      // Add to the layer group
+      svgOverlay.addTo(stateOutlinesLayer);
+    });
+    
+    // Update state
+    setStatePolygons(newStatePolygons);
   };
 
   // Handle zoom controls
