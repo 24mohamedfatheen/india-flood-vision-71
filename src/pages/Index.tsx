@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import RegionSelector from '../components/RegionSelector';
@@ -22,115 +22,84 @@ const Index = () => {
   const [dataFreshness, setDataFreshness] = useState<'fresh' | 'stale' | 'updating'>('updating');
   const [showHistoricalData, setShowHistoricalData] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const floodData = getFloodDataForRegion(selectedRegion);
   const { toast } = useToast();
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
-  // Initial data fetch
-  useEffect(() => {
-    const loadInitialData = async () => {
-      setDataFreshness('updating');
-      try {
-        await fetchImdData();
-        const now = new Date();
-        setLastUpdateTime(now);
-        setNextUpdateTime(new Date(now.getTime() + 12 * 60 * 60 * 1000));
-        setDataFreshness('fresh');
-        
-        toast({
-          title: "Data Loaded",
-          description: `Latest flood data updated at ${now.toLocaleString()}`,
-          duration: 5000,
-        });
-      } catch (error) {
-        console.error("Error loading data:", error);
-        toast({
-          title: "Error Loading Data",
-          description: "Could not fetch the latest flood data",
-          variant: "destructive",
-          duration: 5000,
-        });
-        setDataFreshness('stale');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Improved data fetching function with consistency handling
+  const loadFloodData = useCallback(async (forceRefresh = false) => {
+    const currentState = forceRefresh ? 'updating' : dataFreshness;
+    setDataFreshness(currentState);
     
-    loadInitialData();
-  }, [toast]);
-
-  const handleRegionChange = (region: string) => {
-    setSelectedRegion(region);
-  };
-  
-  const handleManualRefresh = async () => {
-    setDataFreshness('updating');
+    if (forceRefresh) {
+      setIsRefreshing(true);
+    }
     
     try {
-      await fetchImdData();
+      await fetchImdData(forceRefresh);
       const now = new Date();
       setLastUpdateTime(now);
       setNextUpdateTime(new Date(now.getTime() + 12 * 60 * 60 * 1000));
       setDataFreshness('fresh');
       
-      toast({
-        title: "Data refreshed",
-        description: `Latest flood data updated at ${now.toLocaleString()}`,
-        duration: 5000,
-      });
+      if (forceRefresh) {
+        toast({
+          title: "Data refreshed",
+          description: `Latest flood data updated at ${now.toLocaleString()}`,
+          duration: 5000,
+        });
+      } else {
+        toast({
+          title: "Data Loaded",
+          description: `Latest flood data updated at ${now.toLocaleString()}`,
+          duration: 5000,
+        });
+      }
     } catch (error) {
-      console.error("Error refreshing data:", error);
+      console.error("Error loading data:", error);
       toast({
-        title: "Refresh Failed",
+        title: forceRefresh ? "Refresh Failed" : "Error Loading Data",
         description: "Could not fetch the latest flood data",
         variant: "destructive",
         duration: 5000,
       });
       setDataFreshness('stale');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
     }
+  }, [toast, dataFreshness]);
+  
+  // Initial data fetch
+  useEffect(() => {
+    loadFloodData(false);
+  }, [loadFloodData]);
+
+  const handleRegionChange = (region: string) => {
+    setSelectedRegion(region);
+  };
+  
+  // Improved manual refresh handler
+  const handleManualRefresh = async () => {
+    if (isRefreshing) return; // Prevent multiple concurrent refreshes
+    
+    console.log('Manual refresh triggered');
+    await loadFloodData(true);
   };
   
   // Set up data refresh every 12 hours
   useEffect(() => {
-    const updateInterval = setInterval(async () => {
-      try {
-        await fetchImdData();
-        const now = new Date();
-        setLastUpdateTime(now);
-        setNextUpdateTime(new Date(now.getTime() + 12 * 60 * 60 * 1000));
-        setDataFreshness('fresh');
-        
-        toast({
-          title: "Flood data updated",
-          description: `Latest data as of ${now.toLocaleString()}`,
-          duration: 5000,
-        });
-        
-        console.log("Data updated at:", now);
-      } catch (error) {
-        console.error("Error during scheduled update:", error);
-        setDataFreshness('stale');
-      }
+    const updateInterval = setInterval(() => {
+      loadFloodData(true);
     }, 12 * 60 * 60 * 1000); // 12 hours in milliseconds
     
     // For demo purposes, add a shorter interval to simulate updates
     if (process.env.NODE_ENV === 'development') {
-      const demoInterval = setTimeout(async () => {
-        try {
-          await fetchImdData();
-          const now = new Date();
-          setLastUpdateTime(now);
-          setNextUpdateTime(new Date(now.getTime() + 12 * 60 * 60 * 1000));
-          
-          toast({
-            title: "Demo update",
-            description: `Latest flood data as of ${now.toLocaleString()}`,
-            duration: 5000,
-          });
-        } catch (error) {
-          console.error("Error during demo update:", error);
-        }
+      console.log('Development mode: adding demo interval');
+      const demoInterval = setTimeout(() => {
+        loadFloodData(true);
       }, 60000); // 1 minute for demo
       
       return () => {
@@ -140,7 +109,7 @@ const Index = () => {
     }
     
     return () => clearInterval(updateInterval);
-  }, [toast]);
+  }, [loadFloodData]);
 
   // Check if data is stale (over 12 hours old)
   useEffect(() => {
@@ -235,11 +204,11 @@ const Index = () => {
               variant="outline" 
               size="sm" 
               onClick={handleManualRefresh}
-              disabled={dataFreshness === 'updating'}
+              disabled={dataFreshness === 'updating' || isRefreshing}
               className="text-xs h-7"
             >
-              <RefreshCw className={`h-3 w-3 mr-1 ${dataFreshness === 'updating' ? 'animate-spin' : ''}`} />
-              Refresh Data
+              <RefreshCw className={`h-3 w-3 mr-1 ${(dataFreshness === 'updating' || isRefreshing) ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
             </Button>
           </div>
         </div>

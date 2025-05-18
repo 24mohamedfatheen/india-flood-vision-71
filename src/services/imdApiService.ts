@@ -61,7 +61,19 @@ const cityCoordinates: Record<string, [number, number]> = {
   'Guwahati': [26.1445, 91.7362]
 };
 
-// Simulated API service
+// Use a fixed seed for consistent random data generation 
+// This ensures that the randomly generated data remains consistent between page refreshes
+const consistentRandom = (() => {
+  const seed = 42; // Fixed seed for consistency
+  let current = seed;
+  
+  return () => {
+    current = (current * 9301 + 49297) % 233280;
+    return current / 233280;
+  };
+})();
+
+// Simulated API service with consistent data generation
 export const imdApiService = {
   // Fetch data (simulated)
   fetchFloodData: async (): Promise<IMDRegionData[]> => {
@@ -72,8 +84,12 @@ export const imdApiService = {
     
     // Generate simulated data based on states and districts
     const statesData: IMDRegionData[] = regions.map(region => {
-      // Generate realistic data for each region
-      const rainfall = Math.floor(Math.random() * 400) + 50; // 50-450mm
+      // Generate consistent data for each region
+      const randomValue = consistentRandom();
+      
+      // Use the random value to generate consistent rainfall between 50-450mm
+      const rainfall = Math.floor(randomValue * 400) + 50;
+      
       const riskLevels: ('low' | 'medium' | 'high' | 'severe')[] = ['low', 'medium', 'high', 'severe'];
       const riskIndex = Math.min(
         Math.floor((rainfall - 50) / 100), // Higher rainfall = higher risk
@@ -88,7 +104,7 @@ export const imdApiService = {
         'high': 50000,
         'severe': 100000
       };
-      const populationAffected = Math.floor(Math.random() * populationMultiplier[floodRiskLevel]) + 1000;
+      const populationAffected = Math.floor(consistentRandom() * populationMultiplier[floodRiskLevel]) + 1000;
       
       // Affected area also scales with risk level
       const areaMultiplier = {
@@ -97,7 +113,7 @@ export const imdApiService = {
         'high': 100,
         'severe': 200
       };
-      const affectedArea = Math.floor(Math.random() * areaMultiplier[floodRiskLevel]) + 10;
+      const affectedArea = Math.floor(consistentRandom() * areaMultiplier[floodRiskLevel]) + 10;
       
       // Only add river data for high and severe risk areas
       let riverData: IMDRiverData | undefined;
@@ -121,13 +137,16 @@ export const imdApiService = {
         const defaultRiverName = 'Local River';
         const riverName = riverNames[region.state as keyof typeof riverNames] || defaultRiverName;
         
+        // Make river level consistent but based on the risk level
+        const currentLevel = 2 + (riskIndex * 1.5) + (consistentRandom() * 0.5);
+        
         riverData = {
           name: riverName,
-          currentLevel: Math.floor((Math.random() * 6) * 10) / 10 + 2, // 2-8 meters
+          currentLevel: parseFloat(currentLevel.toFixed(1)),
           dangerLevel: 7.5,
           warningLevel: 6.0,
           normalLevel: 3.5,
-          trend: Math.random() > 0.5 ? 'rising' : (Math.random() > 0.5 ? 'falling' : 'stable'),
+          trend: consistentRandom() > 0.5 ? 'rising' : (consistentRandom() > 0.5 ? 'falling' : 'stable'),
           lastUpdated: new Date().toISOString()
         };
       }
@@ -148,18 +167,21 @@ export const imdApiService = {
         }];
       }
       
-      // Add flood predictions based on risk level
+      // Add flood predictions based on risk level with consistent values
+      const fixedDate = new Date();
+      fixedDate.setDate(fixedDate.getDate() + Math.floor(consistentRandom() * 10));
+      
       const predictedFlood = {
-        date: new Date(Date.now() + Math.floor(Math.random() * 10) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        probabilityPercentage: Math.floor(Math.random() * 30) + (riskIndex * 20), // Higher risk = higher probability
-        expectedRainfall: rainfall * (Math.random() * 0.4 + 0.8), // Expected rainfall similar to current
-        timeframe: `Next ${Math.floor(Math.random() * 3) + 1} days`
+        date: fixedDate.toISOString().split('T')[0],
+        probabilityPercentage: Math.floor(consistentRandom() * 30) + (riskIndex * 20), // Higher risk = higher probability
+        expectedRainfall: rainfall * (0.8 + consistentRandom() * 0.4), // Expected rainfall similar to current
+        timeframe: `Next ${Math.floor(consistentRandom() * 3) + 1} days`
       };
       
       // Use accurate coordinates for each city
       const coordinates = cityCoordinates[region.label] || [
-        20.5937 + (Math.random() * 10 - 5), // Default fallback with randomization
-        78.9629 + (Math.random() * 10 - 5)
+        20.5937 + (consistentRandom() * 10 - 5), // Default fallback with randomization
+        78.9629 + (consistentRandom() * 10 - 5)
       ];
       
       return {
@@ -172,7 +194,7 @@ export const imdApiService = {
         riverData,
         activeWarnings,
         predictedFlood,
-        coordinates: coordinates
+        coordinates
       };
     });
     

@@ -1,4 +1,3 @@
-
 import { IMDRegionData } from '../services/imdApiService';
 
 export interface FloodData {
@@ -544,29 +543,100 @@ export const floodData: FloodData[] = [
   }
 ];
 
-// Import cache for flood data
-let cachedImdData: IMDRegionData[] | null = null;
+// Add proper type for the cached data with timestamp
+interface CachedIMDData {
+  data: IMDRegionData[];
+  timestamp: string;
+  expiresAt: string; // When this cache expires
+}
 
-// Simulated API fetch function for flood data
-export const fetchImdData = async (): Promise<IMDRegionData[]> => {
+// Replace simple cache with a proper cache object
+let imdDataCache: CachedIMDData | null = null;
+
+// Cache validity duration in milliseconds (6 hours)
+const CACHE_VALIDITY_DURATION = 6 * 60 * 60 * 1000;
+
+// Local storage key for persisting cache
+const IMD_CACHE_KEY = 'imd_data_cache';
+
+// Load cache from localStorage on init
+const loadCachedData = (): void => {
   try {
+    const storedCache = localStorage.getItem(IMD_CACHE_KEY);
+    if (storedCache) {
+      const parsedCache = JSON.parse(storedCache) as CachedIMDData;
+      
+      // Check if cache is still valid
+      if (new Date(parsedCache.expiresAt).getTime() > Date.now()) {
+        imdDataCache = parsedCache;
+        console.log('Loaded valid IMD data from local storage cache');
+      } else {
+        console.log('Cached IMD data expired, will fetch fresh data');
+        localStorage.removeItem(IMD_CACHE_KEY);
+      }
+    }
+  } catch (error) {
+    console.error('Error loading cached IMD data:', error);
+    localStorage.removeItem(IMD_CACHE_KEY);
+  }
+};
+
+// Initialize by loading cache
+loadCachedData();
+
+// Improved API fetch function with proper caching
+export const fetchImdData = async (forceRefresh = false): Promise<IMDRegionData[]> => {
+  console.log('fetchImdData called, forceRefresh:', forceRefresh);
+  
+  // Return cached data if available and not forcing refresh
+  if (!forceRefresh && imdDataCache && new Date(imdDataCache.expiresAt).getTime() > Date.now()) {
+    console.log('Using cached IMD data from', new Date(imdDataCache.timestamp).toLocaleString());
+    return imdDataCache.data;
+  }
+  
+  try {
+    console.log('Fetching fresh IMD data...');
+    
     // In a real app, this would be a fetch to an actual API endpoint
-    // For demo purposes, we'll simulate the API response
     const imdApiService = await import('../services/imdApiService');
     const imdData = await imdApiService.imdApiService.fetchFloodData();
     
-    // Cache the data for future use
-    cachedImdData = imdData;
+    const now = new Date();
     
+    // Create new cache object
+    const newCache: CachedIMDData = {
+      data: imdData,
+      timestamp: now.toISOString(),
+      expiresAt: new Date(now.getTime() + CACHE_VALIDITY_DURATION).toISOString()
+    };
+    
+    // Update in-memory cache
+    imdDataCache = newCache;
+    
+    // Persist cache to localStorage
+    try {
+      localStorage.setItem(IMD_CACHE_KEY, JSON.stringify(newCache));
+    } catch (storageError) {
+      console.warn('Failed to store IMD data in localStorage:', storageError);
+    }
+    
+    console.log('Fresh IMD data fetched and cached at', now.toLocaleString());
     return imdData;
   } catch (error) {
-    console.error('Error fetching flood data:', error);
-    // Return empty array if there's an error
+    console.error('Error fetching IMD data:', error);
+    
+    // If fetch fails but we have cached data, use it even if expired
+    if (imdDataCache) {
+      console.log('Using expired cached data due to fetch failure');
+      return imdDataCache.data;
+    }
+    
+    // Return empty array if no cached data available
     return [];
   }
 };
 
-// Get flood data for a specific region
+// Improved function to get region data with consistency
 export const getFloodDataForRegion = (region: string): FloodData | null => {
   // Check if the region matches any predefined regions
   const regionLower = region.toLowerCase();
