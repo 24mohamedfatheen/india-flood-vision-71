@@ -37,10 +37,6 @@ const MapLegend = () => {
           <div className="h-3 w-6 mr-2 bg-blue-200 opacity-40 border border-blue-500"></div>
           <span>State Boundary</span>
         </div>
-        <div className="flex items-center mt-1.5">
-          <div className="h-3 w-6 mr-2 border border-gray-400 rounded-sm"></div>
-          <span>State Outline</span>
-        </div>
       </div>
     </div>
   );

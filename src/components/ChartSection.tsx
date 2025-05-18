@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { getHistoricalRainfallData, getPredictionData } from '../data/floodData';
@@ -12,26 +13,6 @@ import { cn } from '../lib/utils';
 interface ChartSectionProps {
   selectedRegion: string;
 }
-
-// Helper function to get color based on risk level - keeping consistent with Map component
-const getRiskLevelColor = (riskLevel: string | number): string => {
-  if (typeof riskLevel === 'number') {
-    // For probability values
-    if (riskLevel >= 75) return '#F44336'; // Severe (Red)
-    if (riskLevel >= 50) return '#FF9800'; // High (Orange)
-    if (riskLevel >= 25) return '#FFC107'; // Medium (Yellow)
-    return '#4CAF50'; // Low (Green)
-  } else {
-    // For string risk levels
-    switch (riskLevel) {
-      case 'severe': return '#F44336';
-      case 'high': return '#FF9800';
-      case 'medium': return '#FFC107';
-      case 'low': return '#4CAF50';
-      default: return '#4CAF50';
-    }
-  }
-};
 
 const ChartSection: React.FC<ChartSectionProps> = ({ selectedRegion }) => {
   // Separate state variables for historical data and prediction forecast
@@ -75,8 +56,7 @@ const ChartSection: React.FC<ChartSectionProps> = ({ selectedRegion }) => {
       return {
         ...item,
         date: date,
-        formattedDate: format(date, 'yyyy-MM-dd'), // String format for comparison
-        color: getRiskLevelColor(item.probability) // Add color based on probability
+        formattedDate: format(date, 'yyyy-MM-dd') // String format for comparison
       };
     });
   }, [predictionData, forecastMonth]);
@@ -121,28 +101,6 @@ const ChartSection: React.FC<ChartSectionProps> = ({ selectedRegion }) => {
     } catch (e) {
       return 'Format error';
     }
-  };
-
-  // Custom tooltip for the probability forecast chart
-  const CustomProbabilityTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const probability = payload[0].value;
-      const color = getRiskLevelColor(probability);
-      let riskLevel = 'Low';
-      
-      if (probability >= 75) riskLevel = 'Severe';
-      else if (probability >= 50) riskLevel = 'High';
-      else if (probability >= 25) riskLevel = 'Medium';
-      
-      return (
-        <div className="bg-white p-2 border border-gray-200 shadow-md rounded-md">
-          <p className="font-semibold">{safeDateFormat(label, 'MMMM d, yyyy')}</p>
-          <p>Probability: <span style={{ color }}>{probability}%</span></p>
-          <p>Risk Level: <span style={{ color }}>{riskLevel}</span></p>
-        </div>
-      );
-    }
-    return null;
   };
 
   return (
@@ -233,7 +191,16 @@ const ChartSection: React.FC<ChartSectionProps> = ({ selectedRegion }) => {
                 }}
               />
               <YAxis domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
-              <Tooltip content={<CustomProbabilityTooltip />} />
+              <Tooltip
+                formatter={(value) => [`${Number(value).toFixed(1)}%`, 'Probability']}
+                labelFormatter={(label) => {
+                  if (typeof label === 'string') {
+                    const date = new Date(label);
+                    return isValid(date) ? format(date, 'MMMM d, yyyy') : label;
+                  }
+                  return label;
+                }}
+              />
               <Legend />
               <Line
                 type="monotone"
@@ -241,20 +208,8 @@ const ChartSection: React.FC<ChartSectionProps> = ({ selectedRegion }) => {
                 name="Flood Probability (%)"
                 stroke="#FF9800"
                 strokeWidth={2}
-                dot={(props) => {
-                  const { cx, cy, payload } = props;
-                  const color = getRiskLevelColor(payload.probability);
-                  return (
-                    <circle 
-                      cx={cx} 
-                      cy={cy} 
-                      r={4} 
-                      fill={color} 
-                      stroke="white" 
-                      strokeWidth={1} 
-                    />
-                  );
-                }}
+                dot={{ r: 4 }}
+                activeDot={{ r: 6 }}
               />
             </LineChart>
           </ResponsiveContainer>
