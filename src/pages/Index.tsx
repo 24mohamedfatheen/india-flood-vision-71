@@ -14,6 +14,7 @@ import { Clock, RefreshCw, AlertTriangle, LogIn, LogOut } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../context/AuthContext';
 import { Skeleton } from '../components/ui/skeleton';
+import CursorAiIndicator from '../components/CursorAiIndicator';
 
 const Index = () => {
   const [selectedRegion, setSelectedRegion] = useState('mumbai');
@@ -136,7 +137,8 @@ const Index = () => {
       <div className="container mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-4">
           <Header />
-          <div>
+          <div className="flex items-center gap-2">
+            <CursorAiIndicator />
             {isAuthenticated ? (
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">
@@ -305,15 +307,19 @@ const Index = () => {
             <a href="https://chennaimetrowater.tn.gov.in/" target="_blank" rel="noopener noreferrer" className="data-source-badge">
               Chennai Water Supply
             </a>
+            <a href="https://cursor.ai/" target="_blank" rel="noopener noreferrer" className="data-source-badge bg-indigo-100">
+              Cursor AI
+            </a>
           </div>
           <p className="text-xs text-muted-foreground">
-            All flood predictions and warnings are based on official meteorological and hydrological data. Updates occur every 12 hours.
+            All flood predictions and warnings are based on official meteorological and hydrological data, enhanced with Cursor AI technology. Updates occur every 12 hours.
           </p>
         </div>
         
         <footer className="text-center text-sm text-muted-foreground py-4 border-t mt-6">
           <p>India Flood Vision Dashboard - Data last updated: {lastUpdateTime.toLocaleString()}</p>
           <p className="text-xs mt-1">Next scheduled update: {nextUpdateTime.toLocaleString()}</p>
+          <p className="text-xs mt-1">Powered by Cursor AI technology</p>
         </footer>
       </div>
     </div>

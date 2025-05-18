@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, CloudRain } from 'lucide-react';
 
 const MapLegend = () => {
   return (
@@ -36,6 +36,13 @@ const MapLegend = () => {
         <div className="flex items-center mt-1.5">
           <div className="h-3 w-6 mr-2 bg-blue-200 opacity-40 border border-blue-500"></div>
           <span>State Boundary</span>
+        </div>
+      </div>
+      
+      <div className="pt-2 mt-2 border-t border-gray-100">
+        <div className="flex items-center text-blue-700">
+          <CloudRain className="h-3 w-3 mr-1 text-blue-600" />
+          <span className="text-[10px]">Predictions powered by Cursor AI</span>
         </div>
       </div>
     </div>

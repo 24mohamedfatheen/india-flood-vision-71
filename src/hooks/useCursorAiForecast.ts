@@ -1,0 +1,65 @@
+
+import { useState, useEffect, useCallback } from 'react';
+import { useToast } from './use-toast';
+import { fetchFloodForecast, CursorAiResponse, ForecastParams } from '../services/cursorAiService';
+
+interface UseCursorAiForecastOptions {
+  region: string;
+  state?: string;
+  days?: number;
+  coordinates?: [number, number];
+  enabled?: boolean;
+}
+
+export function useCursorAiForecast({
+  region,
+  state,
+  days = 10,
+  coordinates,
+  enabled = true
+}: UseCursorAiForecastOptions) {
+  const [data, setData] = useState<CursorAiResponse | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+  const { toast } = useToast();
+
+  const fetchForecast = useCallback(async () => {
+    if (!enabled || !region) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const params: ForecastParams = {
+        region,
+        state,
+        days,
+        coordinates
+      };
+
+      const response = await fetchFloodForecast(params);
+      setData(response);
+    } catch (err) {
+      console.error('Error fetching forecast:', err);
+      setError(err instanceof Error ? err : new Error('Failed to fetch forecast'));
+      toast({
+        title: "Forecast Error",
+        description: "Could not load AI-powered forecast. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [region, state, days, coordinates, enabled, toast]);
+
+  useEffect(() => {
+    fetchForecast();
+  }, [fetchForecast]);
+
+  return {
+    data,
+    isLoading,
+    error,
+    refetch: fetchForecast
+  };
+}

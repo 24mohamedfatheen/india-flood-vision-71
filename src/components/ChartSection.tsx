@@ -1,27 +1,18 @@
 
 import React, { useState } from 'react';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { getHistoricalRainfallData, getPredictionData } from '../data/floodData';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { getHistoricalRainfallData } from '../data/floodData';
 import { Button } from './ui/button';
-import { Calendar } from './ui/calendar';
-import { format, subMonths, addDays, isValid, parseISO } from 'date-fns';
-import { Calendar as CalendarIcon } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { format, isValid, parseISO } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { cn } from '../lib/utils';
+import AiFloodForecast from './AiFloodForecast';
 
 interface ChartSectionProps {
   selectedRegion: string;
 }
 
 const ChartSection: React.FC<ChartSectionProps> = ({ selectedRegion }) => {
-  // Separate state variables for historical data and prediction forecast
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-  const [dateRange, setDateRange] = useState<'year'>('year');
-  
-  // Separate state for forecast
-  const [forecastMonth, setForecastMonth] = useState<number>(new Date().getMonth());
   
   // Get rainfall data based on selected region and year
   const rainfallData = getHistoricalRainfallData(selectedRegion);
@@ -40,31 +31,6 @@ const ChartSection: React.FC<ChartSectionProps> = ({ selectedRegion }) => {
       };
     });
   }, [rainfallData, selectedYear]);
-  
-  // Get prediction data starting from the selected date
-  // Use the current date to ensure data changes daily
-  const today = new Date();
-  const predictionData = getPredictionData(selectedRegion);
-  
-  // Process prediction data to add proper date objects
-  const processedPredictionData = React.useMemo(() => {
-    return predictionData.map((item, index) => {
-      // Create actual dates from the prediction days, but using the forecast month
-      const date = new Date();
-      date.setMonth(forecastMonth); // Use forecast month instead of current month
-      date.setDate(date.getDate() + index); // Adding days based on index
-      return {
-        ...item,
-        date: date,
-        formattedDate: format(date, 'yyyy-MM-dd') // String format for comparison
-      };
-    });
-  }, [predictionData, forecastMonth]);
-  
-  // Filter prediction data to show 10 days of predictions
-  const filteredPredictionData = React.useMemo(() => {
-    return processedPredictionData.slice(0, 10); // Extended to 10 days of predictions
-  }, [processedPredictionData]);
   
   // Generate available years for selection (going back 10 years)
   const availableYears = React.useMemo(() => {
@@ -150,71 +116,8 @@ const ChartSection: React.FC<ChartSectionProps> = ({ selectedRegion }) => {
         </div>
       </div>
       
-      <div className="flood-card">
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-4">
-          <div>
-            <h2 className="section-title">10-Day Flood Probability Forecast</h2>
-            <p className="text-sm text-muted-foreground">
-              Starting from {safeDateFormat(today, 'MMM dd, yyyy')}
-            </p>
-          </div>
-          <div className="mt-2 md:mt-0">
-            <Select
-              value={forecastMonth.toString()}
-              onValueChange={(value: string) => {
-                setForecastMonth(parseInt(value));
-              }}
-            >
-              <SelectTrigger className="w-[120px] h-9">
-                <SelectValue placeholder="Select month" />
-              </SelectTrigger>
-              <SelectContent>
-                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-                  .map((month, index) => (
-                    <SelectItem key={index} value={index.toString()}>{month}</SelectItem>
-                  ))
-                }
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        
-        <div className="h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={filteredPredictionData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="formattedDate" 
-                tickFormatter={(tick) => {
-                  const date = new Date(tick);
-                  return isValid(date) ? format(date, 'MMM dd') : '';
-                }}
-              />
-              <YAxis domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
-              <Tooltip
-                formatter={(value) => [`${Number(value).toFixed(1)}%`, 'Probability']}
-                labelFormatter={(label) => {
-                  if (typeof label === 'string') {
-                    const date = new Date(label);
-                    return isValid(date) ? format(date, 'MMMM d, yyyy') : label;
-                  }
-                  return label;
-                }}
-              />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="probability"
-                name="Flood Probability (%)"
-                stroke="#FF9800"
-                strokeWidth={2}
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      {/* AI-powered forecast component */}
+      <AiFloodForecast selectedRegion={selectedRegion} />
     </div>
   );
 };
