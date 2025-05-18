@@ -15,9 +15,13 @@ interface ChartSectionProps {
 }
 
 const ChartSection: React.FC<ChartSectionProps> = ({ selectedRegion }) => {
+  // Separate state variables for historical data and prediction forecast
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [dateRange, setDateRange] = useState<'year'>('year');
+  
+  // Separate state for forecast
+  const [forecastMonth, setForecastMonth] = useState<number>(new Date().getMonth());
   
   // Get rainfall data based on selected region and year
   const rainfallData = getHistoricalRainfallData(selectedRegion);
@@ -45,8 +49,9 @@ const ChartSection: React.FC<ChartSectionProps> = ({ selectedRegion }) => {
   // Process prediction data to add proper date objects
   const processedPredictionData = React.useMemo(() => {
     return predictionData.map((item, index) => {
-      // Create actual dates from the prediction days
-      const date = new Date(today);
+      // Create actual dates from the prediction days, but using the forecast month
+      const date = new Date();
+      date.setMonth(forecastMonth); // Use forecast month instead of current month
       date.setDate(date.getDate() + index); // Adding days based on index
       return {
         ...item,
@@ -54,7 +59,7 @@ const ChartSection: React.FC<ChartSectionProps> = ({ selectedRegion }) => {
         formattedDate: format(date, 'yyyy-MM-dd') // String format for comparison
       };
     });
-  }, [predictionData, today]);
+  }, [predictionData, forecastMonth]);
   
   // Filter prediction data to show 10 days of predictions
   const filteredPredictionData = React.useMemo(() => {
@@ -155,11 +160,9 @@ const ChartSection: React.FC<ChartSectionProps> = ({ selectedRegion }) => {
           </div>
           <div className="mt-2 md:mt-0">
             <Select
-              value={selectedDate.getMonth().toString()}
+              value={forecastMonth.toString()}
               onValueChange={(value: string) => {
-                const newDate = new Date(selectedDate);
-                newDate.setMonth(parseInt(value));
-                setSelectedDate(newDate);
+                setForecastMonth(parseInt(value));
               }}
             >
               <SelectTrigger className="w-[120px] h-9">
