@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
@@ -8,6 +7,7 @@ import FloodStats from '../components/FloodStats';
 import ChartSection from '../components/ChartSection';
 import PredictionCard from '../components/PredictionCard';
 import HistoricalFloodData from '../components/HistoricalFloodData';
+import ReservoirLevelsTable from '../components/ReservoirLevelsTable';
 import { getFloodDataForRegion, fetchImdData } from '../data/floodData';
 import { useToast } from '../hooks/use-toast';
 import { Clock, RefreshCw, AlertTriangle, LogIn, LogOut } from 'lucide-react';
@@ -274,6 +274,11 @@ const Index = () => {
                   </div>
                 </div>
               </div>
+            </div>
+            
+            {/* New Reservoir Levels Section */}
+            <div className="mb-6">
+              <ReservoirLevelsTable refreshInterval={300000} maxDisplay={5} />
             </div>
             
             {/* Toggle button for historical flood data section */}

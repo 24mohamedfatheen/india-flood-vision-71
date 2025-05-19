@@ -1,4 +1,3 @@
-
 /**
  * Data Sources Service
  * 
@@ -8,6 +7,8 @@
  * Each function in this module abstracts the specifics of a particular data source,
  * handling authentication, request formatting, error handling, and data normalization.
  */
+
+import { ReservoirData } from '../types/reservoirData';
 
 interface IMDWeatherResponse {
   rainfall: number;
@@ -38,6 +39,9 @@ interface CWCRiverResponse {
     }>;
   };
 }
+
+// URL for the reservoir data CSV hosted on GitHub Gist
+const RESERVOIR_DATA_URL = 'https://gist.githubusercontent.com/24mohamedfatheen/3b17ce0c5d7f747bb22b6ff59357a8a1/raw/07afce827e5240cbd15c0b7c267e2ca6bd3e93e7/gistfile1.txt';
 
 /**
  * Fetches weather data from the India Meteorological Department (IMD) API
@@ -283,5 +287,82 @@ export async function fetchHistoricalFloodData(region: string, years: number = 1
   } catch (error) {
     console.error('Error fetching historical flood data:', error);
     throw new Error('Failed to fetch historical flood data');
+  }
+}
+
+/**
+ * Fetches reservoir level data from GitHub Gist CSV file
+ * Parses the CSV data and returns an array of reservoir data objects
+ */
+export async function fetchReservoirData(): Promise<ReservoirData[] | null> {
+  try {
+    console.log('Fetching reservoir data from GitHub Gist');
+    
+    const response = await fetch(RESERVOIR_DATA_URL);
+    if (!response.ok) {
+      console.error(`Error fetching data from ${RESERVOIR_DATA_URL}: ${response.status}`);
+      return null;
+    }
+    
+    const csvData = await response.text();
+    const lines = csvData.trim().split('\n');
+    const header = lines[0].split(',');
+    
+    // Find the column indices for reservoir name, level, and timestamp
+    const reservoirNameIndex = header.findIndex(col => 
+      col.toLowerCase().includes('reservoir') || 
+      col.toLowerCase().includes('dam') || 
+      col.toLowerCase().includes('name'));
+    
+    const levelIndex = header.findIndex(col => 
+      col.toLowerCase().includes('level') || 
+      col.toLowerCase().includes('height'));
+    
+    const timestampIndex = header.findIndex(col => 
+      col.toLowerCase().includes('date') || 
+      col.toLowerCase().includes('time') || 
+      col.toLowerCase().includes('timestamp'));
+    
+    const capacityIndex = header.findIndex(col => 
+      col.toLowerCase().includes('capacity') || 
+      col.toLowerCase().includes('max'));
+    
+    if (reservoirNameIndex === -1 || levelIndex === -1) {
+      console.error('Could not find required columns in CSV header:', header);
+      return null;
+    }
+    
+    console.log(`Parsing CSV data with columns: ${header.join(', ')}`);
+    console.log(`Using indices: name=${reservoirNameIndex}, level=${levelIndex}, time=${timestampIndex}, capacity=${capacityIndex}`);
+    
+    // Parse the data rows
+    const reservoirData: ReservoirData[] = lines.slice(1).map(line => {
+      const values = line.split(',');
+      
+      // Make sure we have enough values in the row
+      if (values.length <= Math.max(reservoirNameIndex, levelIndex)) {
+        console.warn('Incomplete data row:', line);
+        return null;
+      }
+      
+      const waterLevel = parseFloat(values[levelIndex]);
+      const capacity = capacityIndex !== -1 ? parseFloat(values[capacityIndex]) : undefined;
+      const percentFull = capacity && !isNaN(waterLevel) && !isNaN(capacity) ? 
+        Math.min(100, Math.max(0, (waterLevel / capacity) * 100)) : undefined;
+      
+      return {
+        reservoirName: values[reservoirNameIndex].trim(),
+        waterLevel: isNaN(waterLevel) ? null : waterLevel,
+        timestamp: timestampIndex !== -1 ? values[timestampIndex].trim() : new Date().toISOString(),
+        capacity: capacity && !isNaN(capacity) ? capacity : undefined,
+        percentFull
+      };
+    }).filter(Boolean) as ReservoirData[];
+    
+    console.log(`Successfully parsed ${reservoirData.length} reservoir entries`);
+    return reservoirData;
+  } catch (error) {
+    console.error(`Error fetching or parsing reservoir data:`, error);
+    return null;
   }
 }
