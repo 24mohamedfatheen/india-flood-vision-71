@@ -9,6 +9,7 @@ import { Skeleton } from './ui/skeleton';
 import { AlertCircle, AlertTriangle, CloudRain, RefreshCw, Droplet, ArrowUp, ArrowDown, Info, Wind } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { Card, CardContent } from './ui/card';
 
 interface AiFloodForecastProps {
   selectedRegion: string;
@@ -155,11 +156,18 @@ const AiFloodForecast: React.FC<AiFloodForecastProps> = ({ selectedRegion }) => 
               {floodData?.riskLevel.toUpperCase()}
             </Badge>
           </div>
-          <div className="flex items-center mt-1">
-            <CloudRain className="h-3.5 w-3.5 mr-1 text-blue-600" />
-            <p className="text-xs text-muted-foreground">
+          <div className="flex flex-col gap-1 mt-1">
+            <p className="text-xs text-muted-foreground flex items-center">
+              <CloudRain className="h-3.5 w-3.5 mr-1 text-blue-600" />
               Developed with Cursor IDE • Last updated: {data?.timestamp ? safeDateFormat(data.timestamp, 'MMM dd, yyyy, h:mm a') : 'Unknown'}
             </p>
+            {data?.dataSourceInfo && (
+              <p className="text-xs text-muted-foreground flex items-center">
+                <Info className="h-3.5 w-3.5 mr-1 text-blue-600" />
+                Data: {data.dataSourceInfo.weather?.source || 'Weather data unavailable'} 
+                {data.dataSourceInfo.rivers && ` • ${data.dataSourceInfo.rivers.source}`}
+              </p>
+            )}
           </div>
         </div>
         <Button 
@@ -173,25 +181,62 @@ const AiFloodForecast: React.FC<AiFloodForecastProps> = ({ selectedRegion }) => 
         </Button>
       </div>
       
-      {data?.dataSourceInfo && (
+      {data?.modelInfo && (
         <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded-md mb-4 text-xs">
           <div className="flex items-center">
-            <Info className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
+            <AlertCircle className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
             <span>
-              <strong>Data Sources:</strong> {data.dataSourceInfo.weather?.source || 'Weather data unavailable'} • 
-              {data.dataSourceInfo.rivers ? ` ${data.dataSourceInfo.rivers.source}` : ' River data unavailable'}
+              Using forecast algorithm <strong>{data.modelInfo.version}</strong> 
+              with {data.modelInfo.accuracy}% accuracy
+              {data.modelInfo.lastUpdated && ` • Last updated: ${safeDateFormat(data.modelInfo.lastUpdated, 'MMM dd, yyyy')}`}
             </span>
           </div>
-          {data.modelInfo && (
-            <div className="flex items-center mt-1">
-              <AlertCircle className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
-              <span>
-                Using forecast algorithm <strong>{data.modelInfo.version}</strong> 
-                with {data.modelInfo.accuracy}% accuracy
-              </span>
-            </div>
-          )}
         </div>
+      )}
+      
+      {analysis && (
+        <Card className="mb-4 bg-slate-50">
+          <CardContent className="p-3">
+            <h3 className="text-sm font-semibold mb-2">Forecast Analysis</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="flex items-center text-xs">
+                    <AlertTriangle className="h-3.5 w-3.5 mr-1.5 text-orange-500" />
+                    Highest Risk Day:
+                  </span>
+                  <span className="font-medium text-xs">
+                    {safeDateFormat(analysis.highestRiskDay.date, 'MMM dd')} ({analysis.highestRiskDay.probability}%)
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span>Average Risk Level:</span>
+                  <span className="font-medium">{analysis.averageProbability}%</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span>Initial Trend:</span>
+                  <span className="font-medium flex items-center">
+                    {analysis.initialTrend === 'rising' ? (
+                      <>Rising <ArrowUp className="h-3 w-3 ml-1 text-red-500" /></>
+                    ) : analysis.initialTrend === 'falling' ? (
+                      <>Falling <ArrowDown className="h-3 w-3 ml-1 text-green-500" /></>
+                    ) : (
+                      'Stable'
+                    )}
+                  </span>
+                </div>
+                {analysis.sustainedHighRisk && (
+                  <div className="text-xs flex items-center gap-1 text-red-600 font-medium">
+                    <AlertCircle className="h-3.5 w-3.5 text-red-600" />
+                    <span>Warning: Sustained high risk detected</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
       
       <div className="h-[300px]">
@@ -241,48 +286,12 @@ const AiFloodForecast: React.FC<AiFloodForecastProps> = ({ selectedRegion }) => 
       
       {data && chartData.length > 0 && (
         <div className="mt-4">
-          {/* Analysis summary */}
-          {analysis && (
-            <div className="mb-4 p-3 border bg-slate-50 rounded-md">
-              <h3 className="text-sm font-semibold mb-2">Forecast Analysis</h3>
-              <div className="text-xs space-y-1.5">
-                <div className="flex justify-between items-center">
-                  <span className="flex items-center">
-                    <AlertTriangle className="h-3.5 w-3.5 mr-1.5 text-orange-500" />
-                    Highest Risk Day:
-                  </span>
-                  <span className="font-medium">
-                    {safeDateFormat(analysis.highestRiskDay.date, 'MMM dd')} ({analysis.highestRiskDay.probability}%)
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Average Risk Level:</span>
-                  <span className="font-medium">{analysis.averageProbability}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Initial Trend:</span>
-                  <span className="font-medium flex items-center">
-                    {analysis.initialTrend === 'rising' ? (
-                      <>Rising <ArrowUp className="h-3 w-3 ml-1 text-red-500" /></>
-                    ) : analysis.initialTrend === 'falling' ? (
-                      <>Falling <ArrowDown className="h-3 w-3 ml-1 text-green-500" /></>
-                    ) : (
-                      'Stable'
-                    )}
-                  </span>
-                </div>
-                {analysis.sustainedHighRisk && (
-                  <div className="mt-1 text-red-600 font-medium">
-                    Warning: Sustained high risk detected over multiple days
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <h3 className="text-sm font-medium">Contributing Factors</h3>
+              <h3 className="text-sm font-medium flex items-center">
+                <Droplet className="h-4 w-4 mr-1.5 text-blue-600" />
+                Contributing Factors
+              </h3>
               <div className="bg-muted p-2 rounded-sm">
                 <div className="text-xs space-y-1">
                   {data.forecasts[0].factors?.rainfall !== undefined && (
@@ -335,11 +344,23 @@ const AiFloodForecast: React.FC<AiFloodForecastProps> = ({ selectedRegion }) => 
                       </span>
                     </div>
                   )}
+                  
+                  {data.forecasts[0].factors?.historicalPattern !== undefined && (
+                    <div className="flex justify-between">
+                      <span>Historical Pattern:</span>
+                      <span className="font-medium">
+                        {data.forecasts[0].factors.historicalPattern}%
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
             <div className="space-y-2">
-              <h3 className="text-sm font-medium">Current Conditions</h3>
+              <h3 className="text-sm font-medium flex items-center">
+                <CloudRain className="h-4 w-4 mr-1.5 text-blue-600" />
+                Current Conditions
+              </h3>
               <div className="bg-muted p-2 rounded-sm">
                 <div className="text-xs space-y-1">
                   <div className="flex justify-between">
@@ -358,6 +379,12 @@ const AiFloodForecast: React.FC<AiFloodForecastProps> = ({ selectedRegion }) => 
                     <span>Confidence Level:</span>
                     <span className="font-medium">
                       {data.forecasts[0]?.confidence || "N/A"}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-amber-700">
+                    <span>Current Risk:</span>
+                    <span className="font-medium">
+                      {data.forecasts[0]?.probability || "N/A"}%
                     </span>
                   </div>
                 </div>
