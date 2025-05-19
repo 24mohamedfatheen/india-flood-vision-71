@@ -1,7 +1,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from './use-toast';
-import { fetchFloodForecast, CursorAiResponse, ForecastParams } from '../services/floodForecastService';
+import { 
+  fetchFloodForecast, 
+  ForecastParams, 
+  CursorAiResponse,
+  analyzeForecastData
+} from '../services/floodForecastService';
 
 interface UseCursorAiForecastOptions {
   region: string;
@@ -9,6 +14,7 @@ interface UseCursorAiForecastOptions {
   days?: number;
   coordinates?: [number, number];
   enabled?: boolean;
+  useHistoricalData?: boolean;
 }
 
 export function useCursorAiForecast({
@@ -16,9 +22,11 @@ export function useCursorAiForecast({
   state,
   days = 10,
   coordinates,
-  enabled = true
+  enabled = true,
+  useHistoricalData = true
 }: UseCursorAiForecastOptions) {
   const [data, setData] = useState<CursorAiResponse | null>(null);
+  const [analysis, setAnalysis] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
@@ -34,11 +42,26 @@ export function useCursorAiForecast({
         region,
         state,
         days,
-        coordinates
+        coordinates,
+        useHistoricalData
       };
 
+      console.log('Fetching forecast with params:', params);
       const response = await fetchFloodForecast(params);
+      
+      // Store the full forecast data
       setData(response);
+      
+      // Also generate and store analysis of the forecast
+      const forecastAnalysis = analyzeForecastData(response);
+      setAnalysis(forecastAnalysis);
+      
+      // Show success toast for new data
+      toast({
+        title: "Forecast Updated",
+        description: `Latest data for ${region} has been loaded.`,
+        variant: "default"
+      });
     } catch (err) {
       console.error('Error fetching forecast:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch forecast'));
@@ -50,7 +73,7 @@ export function useCursorAiForecast({
     } finally {
       setIsLoading(false);
     }
-  }, [region, state, days, coordinates, enabled, toast]);
+  }, [region, state, days, coordinates, enabled, useHistoricalData, toast]);
 
   useEffect(() => {
     fetchForecast();
@@ -58,6 +81,7 @@ export function useCursorAiForecast({
 
   return {
     data,
+    analysis,
     isLoading,
     error,
     refetch: fetchForecast
