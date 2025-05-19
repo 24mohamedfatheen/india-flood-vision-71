@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from './use-toast';
-import { fetchFloodForecast, CursorAiResponse, ForecastParams } from '../services/cursorAiService';
+import { fetchFloodForecast, CursorAiResponse, ForecastParams } from '../services/floodForecastService';
 
 interface UseCursorAiForecastOptions {
   region: string;
@@ -44,7 +44,7 @@ export function useCursorAiForecast({
       setError(err instanceof Error ? err : new Error('Failed to fetch forecast'));
       toast({
         title: "Forecast Error",
-        description: "Could not load AI-powered forecast. Please try again.",
+        description: "Could not load forecast data. Please try again.",
         variant: "destructive"
       });
     } finally {

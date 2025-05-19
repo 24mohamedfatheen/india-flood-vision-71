@@ -17,7 +17,7 @@ const AiFloodForecast: React.FC<AiFloodForecastProps> = ({ selectedRegion }) => 
   // Get region details
   const floodData = getFloodDataForRegion(selectedRegion);
   
-  // Use our custom hook to fetch AI forecast data
+  // Use our custom hook to fetch forecast data
   const { data, isLoading, error, refetch } = useCursorAiForecast({
     region: selectedRegion,
     state: floodData?.state,
@@ -94,7 +94,7 @@ const AiFloodForecast: React.FC<AiFloodForecastProps> = ({ selectedRegion }) => 
             <h2 className="section-title">10-Day Flood Probability Forecast</h2>
             <p className="text-sm text-muted-foreground flex items-center">
               <CloudRain className="h-3.5 w-3.5 mr-1" />
-              Powered by Cursor AI
+              Developed with Cursor IDE
             </p>
           </div>
         </div>
@@ -102,8 +102,8 @@ const AiFloodForecast: React.FC<AiFloodForecastProps> = ({ selectedRegion }) => 
         <div className="h-[300px] flex items-center justify-center">
           <div className="text-center">
             <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-sm font-medium">Loading AI forecast data...</p>
-            <p className="text-xs text-muted-foreground mt-1">Cursor AI is analyzing flood risk patterns</p>
+            <p className="text-sm font-medium">Loading forecast data...</p>
+            <p className="text-xs text-muted-foreground mt-1">Analyzing flood risk patterns</p>
           </div>
         </div>
       </div>
@@ -134,7 +134,7 @@ const AiFloodForecast: React.FC<AiFloodForecastProps> = ({ selectedRegion }) => 
             <div>
               <h3 className="font-medium text-red-800">Unable to load forecast</h3>
               <p className="text-sm text-red-600 mt-1">
-                We're having trouble connecting to our AI forecast service.
+                We're having trouble generating the forecast.
                 Please try again later.
               </p>
             </div>
@@ -157,7 +157,7 @@ const AiFloodForecast: React.FC<AiFloodForecastProps> = ({ selectedRegion }) => 
           <div className="flex items-center mt-1">
             <CloudRain className="h-3.5 w-3.5 mr-1 text-blue-600" />
             <p className="text-xs text-muted-foreground">
-              Powered by Cursor AI • Last updated: {data?.timestamp ? safeDateFormat(data.timestamp, 'MMM dd, yyyy, h:mm a') : 'Unknown'}
+              Developed with Cursor IDE • Last updated: {data?.timestamp ? safeDateFormat(data.timestamp, 'MMM dd, yyyy, h:mm a') : 'Unknown'}
             </p>
           </div>
         </div>
@@ -177,7 +177,7 @@ const AiFloodForecast: React.FC<AiFloodForecastProps> = ({ selectedRegion }) => 
           <div className="flex items-center">
             <AlertCircle className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
             <span>
-              Using Cursor AI model <strong>{data.modelInfo.version}</strong> 
+              Using forecast algorithm <strong>{data.modelInfo.version}</strong> 
               with {data.modelInfo.accuracy}% accuracy 
             </span>
           </div>
@@ -262,7 +262,7 @@ const AiFloodForecast: React.FC<AiFloodForecastProps> = ({ selectedRegion }) => 
                 <div className="flex justify-between">
                   <span>Data Source:</span>
                   <span className="font-medium text-blue-600">
-                    Cursor AI
+                    Historical Analysis
                   </span>
                 </div>
               </div>

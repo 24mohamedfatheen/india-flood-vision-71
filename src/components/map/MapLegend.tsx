@@ -42,7 +42,7 @@ const MapLegend = () => {
       <div className="pt-2 mt-2 border-t border-gray-100">
         <div className="flex items-center text-blue-700">
           <CloudRain className="h-3 w-3 mr-1 text-blue-600" />
-          <span className="text-[10px]">Predictions powered by Cursor AI</span>
+          <span className="text-[10px]">Developed with Cursor IDE</span>
         </div>
       </div>
     </div>
