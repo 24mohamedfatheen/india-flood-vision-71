@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { AlertTriangle, CloudRain, Info, Database, Droplet } from 'lucide-react';
+import { AlertTriangle, CloudRain, Info, Database } from 'lucide-react';
 
 const MapLegend = () => {
   return (
@@ -47,7 +47,6 @@ const MapLegend = () => {
         <div className="text-[10px] text-muted-foreground">
           <div>• Weather Data: India Meteorological Department</div>
           <div>• River Levels: Central Water Commission</div>
-          <div>• Reservoir Data: Updated every 5 minutes</div>
           <div>• Historical Data: 10-year patterns</div>
           <div>• Analysis: Cursor AI forecast engine v1.2</div>
         </div>
@@ -57,10 +56,6 @@ const MapLegend = () => {
         <div className="flex items-center text-blue-700">
           <CloudRain className="h-3 w-3 mr-1 text-blue-600" />
           <span className="text-[10px]">Developed with Cursor IDE</span>
-        </div>
-        <div className="flex items-center text-blue-700 mt-1">
-          <Droplet className="h-3 w-3 mr-1 text-blue-600" />
-          <span className="text-[10px]">Live water level monitoring</span>
         </div>
       </div>
     </div>
