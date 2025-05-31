@@ -8,9 +8,10 @@ import FloodStats from '../components/FloodStats';
 import ChartSection from '../components/ChartSection';
 import PredictionCard from '../components/PredictionCard';
 import HistoricalFloodData from '../components/HistoricalFloodData';
-import { getFloodDataForRegion, fetchImdData } from '../data/floodData';
+import { getFloodDataForRegion, fetchImdData, floodData } from '../data/floodData';
+import { useReservoirFloodData } from '../hooks/useReservoirFloodData';
 import { useToast } from '../hooks/use-toast';
-import { Clock, RefreshCw, AlertTriangle, LogIn, LogOut } from 'lucide-react';
+import { Clock, RefreshCw, AlertTriangle, LogIn, LogOut, Database } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../context/AuthContext';
 import { Skeleton } from '../components/ui/skeleton';
@@ -24,10 +25,25 @@ const Index = () => {
   const [showHistoricalData, setShowHistoricalData] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const floodData = getFloodDataForRegion(selectedRegion);
+  const [currentFloodData, setCurrentFloodData] = useState(floodData);
+  
   const { toast } = useToast();
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
+  
+  // Use the new reservoir flood data hook
+  const { 
+    isLoading: reservoirLoading, 
+    error: reservoirError, 
+    updateFloodDataWithReservoirs,
+    lastUpdated: reservoirLastUpdated,
+    reservoirCount
+  } = useReservoirFloodData();
+
+  // Get current region's flood data (now enhanced with live reservoir data)
+  const floodDataForRegion = getFloodDataForRegion(selectedRegion);
+  const enhancedFloodData = floodDataForRegion ? 
+    updateFloodDataWithReservoirs([floodDataForRegion])[0] : null;
 
   // Improved data fetching function with consistency handling
   const loadFloodData = useCallback(async (forceRefresh = false) => {
@@ -40,6 +56,11 @@ const Index = () => {
     
     try {
       await fetchImdData(forceRefresh);
+      
+      // Update flood data with reservoir information
+      const updatedFloodData = updateFloodDataWithReservoirs(floodData);
+      setCurrentFloodData(updatedFloodData);
+      
       const now = new Date();
       setLastUpdateTime(now);
       setNextUpdateTime(new Date(now.getTime() + 12 * 60 * 60 * 1000));
@@ -48,13 +69,13 @@ const Index = () => {
       if (forceRefresh) {
         toast({
           title: "Data refreshed",
-          description: `Latest flood data updated at ${now.toLocaleString()}`,
+          description: `Latest flood data with ${reservoirCount} reservoir conditions updated at ${now.toLocaleString()}`,
           duration: 5000,
         });
       } else {
         toast({
           title: "Data Loaded",
-          description: `Latest flood data updated at ${now.toLocaleString()}`,
+          description: `Flood data with live reservoir conditions loaded at ${now.toLocaleString()}`,
           duration: 5000,
         });
       }
@@ -62,7 +83,7 @@ const Index = () => {
       console.error("Error loading data:", error);
       toast({
         title: forceRefresh ? "Refresh Failed" : "Error Loading Data",
-        description: "Could not fetch the latest flood data",
+        description: "Could not fetch the latest flood and reservoir data",
         variant: "destructive",
         duration: 5000,
       });
@@ -71,12 +92,20 @@ const Index = () => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [toast, dataFreshness]);
+  }, [toast, dataFreshness, updateFloodDataWithReservoirs, reservoirCount]);
   
   // Initial data fetch
   useEffect(() => {
     loadFloodData(false);
   }, [loadFloodData]);
+
+  // Update flood data when reservoir data changes
+  useEffect(() => {
+    if (!reservoirLoading) {
+      const updatedFloodData = updateFloodDataWithReservoirs(floodData);
+      setCurrentFloodData(updatedFloodData);
+    }
+  }, [reservoirLoading, updateFloodDataWithReservoirs]);
 
   const handleRegionChange = (region: string) => {
     setSelectedRegion(region);
@@ -202,6 +231,12 @@ const Index = () => {
               <Clock className="h-3 w-3 mr-1" />
               Last updated: {lastUpdateTime.toLocaleString()}
             </div>
+            {reservoirCount > 0 && (
+              <div className="timestamp-badge bg-blue-50 text-blue-700">
+                <Database className="h-3 w-3 mr-1" />
+                Live: {reservoirCount} reservoirs
+              </div>
+            )}
             <Button 
               variant="outline" 
               size="sm" 
@@ -228,12 +263,26 @@ const Index = () => {
             </div>
           </div>
         )}
+
+        {reservoirError && (
+          <div className="mb-4 bg-orange-50 border-l-4 border-orange-400 p-4 rounded">
+            <div className="flex items-start">
+              <AlertTriangle className="h-5 w-5 text-orange-400 mt-0.5 mr-2" />
+              <div>
+                <h3 className="font-medium text-orange-800">Live reservoir data unavailable</h3>
+                <p className="text-sm text-orange-700">
+                  Using historical flood data. Live reservoir conditions could not be loaded.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-12">
             <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
             <p className="text-lg font-medium">Loading flood data...</p>
-            <p className="text-sm text-muted-foreground mt-2">Please wait while we fetch the latest information</p>
+            <p className="text-sm text-muted-foreground mt-2">Analyzing live reservoir conditions and weather data</p>
           </div>
         ) : (
           <>
@@ -241,15 +290,31 @@ const Index = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
               <div className="lg:col-span-2 space-y-6">
                 {/* Left side content */}
-                <FloodStats floodData={floodData} />
+                <FloodStats floodData={enhancedFloodData} />
                 <ChartSection selectedRegion={selectedRegion} />
-                <PredictionCard floodData={floodData} />
+                <PredictionCard floodData={enhancedFloodData} />
               </div>
               
               {/* Right side content - additional info, no map here anymore */}
               <div className="lg:col-span-1">
                 <div className="sticky top-6 bg-white p-4 rounded-lg shadow">
                   <h2 className="text-lg font-medium mb-2">Flood Risk Information</h2>
+                  
+                  {reservoirCount > 0 && (
+                    <div className="mb-4 p-2 bg-blue-50 rounded">
+                      <p className="text-xs text-blue-700 font-medium">
+                        ✓ Live Data Active
+                      </p>
+                      <p className="text-xs text-blue-600">
+                        Analyzing {reservoirCount} reservoir conditions in real-time
+                      </p>
+                      {reservoirLastUpdated && (
+                        <p className="text-xs text-blue-500 mt-1">
+                          Last sync: {reservoirLastUpdated.toLocaleTimeString()}
+                        </p>
+                      )}
+                    </div>
+                  )}
                   
                   <div className="mt-4">
                     <h3 className="text-sm font-medium mb-2">Risk Levels</h3>
