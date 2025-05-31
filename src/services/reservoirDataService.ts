@@ -46,16 +46,36 @@ const REGION_RESERVOIR_MAP: Record<string, string[]> = {
 
 export const fetchReservoirData = async (): Promise<ReservoirData[]> => {
   try {
+    console.log('Fetching reservoir data from Supabase...');
+    
     const { data, error } = await supabase
       .from('indian_reservoir_levels')
-      .select('*')
-      .order('last_updated', { ascending: false });
+      .select(`
+        id,
+        reservoir_name,
+        state,
+        district,
+        current_level_mcm,
+        capacity_mcm,
+        percentage_full,
+        inflow_cusecs,
+        outflow_cusecs,
+        last_updated,
+        lat,
+        long
+      `)
+      .not('reservoir_name', 'is', null)
+      .not('current_level_mcm', 'is', null)
+      .not('capacity_mcm', 'is', null)
+      .order('last_updated', { ascending: false })
+      .limit(1000);
 
     if (error) {
-      console.error('Error fetching reservoir data:', error);
+      console.error('Supabase error:', error);
       return [];
     }
 
+    console.log(`Successfully fetched ${data?.length || 0} reservoir records`);
     return data || [];
   } catch (error) {
     console.error('Error fetching reservoir data:', error);
@@ -72,7 +92,7 @@ export const calculateFloodRiskFromReservoirs = (
   // Find reservoirs relevant to this region
   const relevantReservoirs = reservoirs.filter(r => 
     regionReservoirs.some(name => 
-      r.reservoir_name.toLowerCase().includes(name.toLowerCase()) ||
+      r.reservoir_name?.toLowerCase().includes(name.toLowerCase()) ||
       r.state?.toLowerCase() === getStateForRegion(region).toLowerCase()
     )
   );
