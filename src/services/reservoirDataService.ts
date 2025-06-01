@@ -1,4 +1,3 @@
-
 import { supabase } from '../integrations/supabase/client';
 
 export interface ReservoirData {
@@ -51,9 +50,7 @@ export const fetchReservoirData = async (): Promise<ReservoirData[]> => {
     const { data, error } = await supabase
       .from('indian_reservoir_levels')
       .select('id,reservoir_name')
-      .not('reservoir_name', 'is', null)
-      .order('last_updated', { ascending: false })
-      .limit(1000);
+      .not('reservoir_name', 'is', null);
 
     if (error) {
       console.error('Supabase error:', error);
