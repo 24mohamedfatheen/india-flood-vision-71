@@ -24,21 +24,43 @@ export const useReservoirFloodData = (): UseReservoirFloodDataResult => {
       setIsLoading(true);
       setError(null);
       
+      console.log('Starting reservoir data fetch...');
       const data = await fetchReservoirData();
+      console.log('Received reservoir data:', data);
+      
       setReservoirData(data);
       setLastUpdated(new Date());
       
       if (data.length > 0) {
-        console.log(`Loaded ${data.length} reservoir records for flood calculations`);
+        console.log(`Successfully loaded ${data.length} reservoir records for flood calculations`);
+        toast({
+          title: "Reservoir data loaded",
+          description: `Loaded ${data.length} reservoir records`,
+          duration: 3000,
+        });
+      } else {
+        console.warn('No reservoir data received');
+        toast({
+          title: "No reservoir data",
+          description: "Unable to load reservoir data for enhanced flood calculations",
+          variant: "destructive",
+          duration: 5000,
+        });
       }
     } catch (err) {
       const errorMessage = 'Failed to load reservoir data for flood calculations';
       setError(errorMessage);
       console.error('Reservoir data error:', err);
+      toast({
+        title: "Reservoir data error",
+        description: errorMessage,
+        variant: "destructive",
+        duration: 5000,
+      });
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     loadReservoirData();

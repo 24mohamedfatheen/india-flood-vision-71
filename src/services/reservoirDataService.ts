@@ -1,3 +1,4 @@
+
 import { supabase } from '../integrations/supabase/client';
 
 export interface ReservoirData {
@@ -47,18 +48,49 @@ export const fetchReservoirData = async (): Promise<ReservoirData[]> => {
   try {
     console.log('Fetching reservoir data from Supabase...');
     
-    const { data, error } = await supabase
+    // First, let's try to get ANY data from the table
+    const { data: testData, error: testError } = await supabase
       .from('indian_reservoir_levels')
-      .select('id,reservoir_name')
-      .not('reservoir_name', 'is', null);
+      .select('*')
+      .limit(5);
 
-    if (error) {
-      console.error('Supabase error:', error);
-      return [];
+    console.log('Test query result:', { testData, testError });
+
+    if (testError) {
+      console.error('Test query error:', testError);
     }
 
-    console.log(`Successfully fetched ${data?.length || 0} reservoir records`);
-    return data || [];
+    if (testData && testData.length > 0) {
+      console.log('Sample data structure:', testData[0]);
+      
+      // Now try the actual query with the columns we need
+      const { data, error } = await supabase
+        .from('indian_reservoir_levels')
+        .select('id, reservoir_name, state, district, current_level_mcm, capacity_mcm, percentage_full, inflow_cusecs, outflow_cusecs, last_updated, lat, long')
+        .not('reservoir_name', 'is', null)
+        .limit(100);
+
+      if (error) {
+        console.error('Main query error:', error);
+        return [];
+      }
+
+      console.log(`Successfully fetched ${data?.length || 0} reservoir records`);
+      return data || [];
+    } else {
+      // If no data, try with minimal select
+      const { data, error } = await supabase
+        .from('indian_reservoir_levels')
+        .select('id, reservoir_name');
+
+      if (error) {
+        console.error('Minimal query error:', error);
+        return [];
+      }
+
+      console.log(`Fetched ${data?.length || 0} records with minimal query`);
+      return data || [];
+    }
   } catch (error) {
     console.error('Error fetching reservoir data:', error);
     return [];
