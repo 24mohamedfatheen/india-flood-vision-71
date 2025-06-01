@@ -1,4 +1,3 @@
-
 import { supabase } from '../integrations/supabase/client';
 
 export interface ReservoirData {
@@ -65,8 +64,6 @@ export const fetchReservoirData = async (): Promise<ReservoirData[]> => {
         long
       `)
       .not('reservoir_name', 'is', null)
-      .not('current_level_mcm', 'is', null)
-      .not('capacity_mcm', 'is', null)
       .order('last_updated', { ascending: false })
       .limit(1000);
 
