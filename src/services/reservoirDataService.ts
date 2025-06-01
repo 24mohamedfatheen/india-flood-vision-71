@@ -1,18 +1,19 @@
+
 import { supabase } from '../integrations/supabase/client';
 
 export interface ReservoirData {
   id: number;
   reservoir_name: string;
-  state: string;
-  district: string;
-  current_level_mcm: number;
-  capacity_mcm: number;
-  percentage_full: number;
-  inflow_cusecs: number;
-  outflow_cusecs: number;
-  last_updated: string;
-  lat: number;
-  long: number;
+  state?: string;
+  district?: string;
+  current_level_mcm?: number;
+  capacity_mcm?: number;
+  percentage_full?: number;
+  inflow_cusecs?: number;
+  outflow_cusecs?: number;
+  last_updated?: string;
+  lat?: number;
+  long?: number;
 }
 
 export interface FloodRiskCalculation {
