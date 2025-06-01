@@ -49,20 +49,7 @@ export const fetchReservoirData = async (): Promise<ReservoirData[]> => {
     
     const { data, error } = await supabase
       .from('indian_reservoir_levels')
-      .select(`
-        id,
-        reservoir_name,
-        state,
-        district,
-        current_level_mcm,
-        capacity_mcm,
-        percentage_full,
-        inflow_cusecs,
-        outflow_cusecs,
-        last_updated,
-        lat,
-        long
-      `)
+      .select('id,reservoir_name')
       .not('reservoir_name', 'is', null)
       .order('last_updated', { ascending: false })
       .limit(1000);
