@@ -90,6 +90,21 @@ export type Database = {
         }
         Relationships: []
       }
+      my_test_table: {
+        Row: {
+          id: number
+          name: string | null
+        }
+        Insert: {
+          id?: never
+          name?: string | null
+        }
+        Update: {
+          id?: never
+          name?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

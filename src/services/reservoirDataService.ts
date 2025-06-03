@@ -2,8 +2,8 @@
 import { supabase } from '../integrations/supabase/client';
 
 export interface ReservoirData {
-  id: number;
-  reservoir_name: string;
+  id?: number;
+  reservoir_name?: string;
   state?: string;
   district?: string;
   current_level_mcm?: number;
@@ -46,53 +46,96 @@ const REGION_RESERVOIR_MAP: Record<string, string[]> = {
 
 export const fetchReservoirData = async (): Promise<ReservoirData[]> => {
   try {
-    console.log('Fetching reservoir data from Supabase...');
+    console.log('🔍 Starting comprehensive Supabase debugging...');
+    console.log('📊 Supabase URL:', 'https://tovkiryixtyyxojmxwes.supabase.co');
     
-    // First, let's try to get ANY data from the table
-    const { data: testData, error: testError } = await supabase
-      .from('indian_reservoir_levels')
-      .select('*')
-      .limit(5);
-
-    console.log('Test query result:', { testData, testError });
-
-    if (testError) {
-      console.error('Test query error:', testError);
+    // Step 1: Test basic Supabase connection
+    console.log('🔗 Testing basic Supabase connection...');
+    
+    // Step 2: List all available tables in public schema
+    console.log('📋 Attempting to list tables in public schema...');
+    try {
+      const { data: tables, error: tablesError } = await supabase.rpc('get_public_tables');
+      console.log('📋 Available tables:', tables, 'Error:', tablesError);
+    } catch (e) {
+      console.log('⚠️ Could not list tables via RPC');
     }
 
-    if (testData && testData.length > 0) {
-      console.log('Sample data structure:', testData[0]);
+    // Step 3: Test the working table first (my_test_table)
+    console.log('✅ Testing working table (my_test_table)...');
+    try {
+      const { data: testTableData, error: testTableError } = await supabase
+        .from('my_test_table')
+        .select('*')
+        .limit(3);
       
-      // Now try the actual query with the columns we need
-      const { data, error } = await supabase
-        .from('indian_reservoir_levels')
-        .select('id, reservoir_name, state, district, current_level_mcm, capacity_mcm, percentage_full, inflow_cusecs, outflow_cusecs, last_updated, lat, long')
-        .not('reservoir_name', 'is', null)
-        .limit(100);
-
-      if (error) {
-        console.error('Main query error:', error);
-        return [];
-      }
-
-      console.log(`Successfully fetched ${data?.length || 0} reservoir records`);
-      return data || [];
-    } else {
-      // If no data, try with minimal select
-      const { data, error } = await supabase
-        .from('indian_reservoir_levels')
-        .select('id, reservoir_name');
-
-      if (error) {
-        console.error('Minimal query error:', error);
-        return [];
-      }
-
-      console.log(`Fetched ${data?.length || 0} records with minimal query`);
-      return data || [];
+      console.log('✅ my_test_table result:', { data: testTableData, error: testTableError });
+    } catch (e) {
+      console.log('❌ my_test_table failed:', e);
     }
+
+    // Step 4: Try different variations of the reservoir table name
+    const tableVariations = [
+      'indian_reservoir_levels',
+      'indian-reservoir-levels',
+      'IndianReservoirLevels',
+      'reservoir_levels',
+      'reservoirs'
+    ];
+
+    for (const tableName of tableVariations) {
+      console.log(`🔍 Trying table name: "${tableName}"`);
+      try {
+        const { data, error } = await supabase
+          .from(tableName)
+          .select('*')
+          .limit(1);
+        
+        console.log(`📊 Result for "${tableName}":`, { 
+          dataLength: data?.length || 0, 
+          error: error,
+          data: data?.slice(0, 1) // Only show first record
+        });
+
+        if (data && data.length > 0) {
+          console.log(`🎉 SUCCESS! Found data in table: "${tableName}"`);
+          
+          // Now fetch more data from the working table
+          const { data: fullData, error: fullError } = await supabase
+            .from(tableName)
+            .select('id, reservoir_name, state, district, current_level_mcm, capacity_mcm, percentage_full, inflow_cusecs, outflow_cusecs, last_updated, lat, long')
+            .limit(100);
+
+          if (fullError) {
+            console.error(`❌ Error fetching full data from "${tableName}":`, fullError);
+            return [];
+          }
+
+          console.log(`✅ Successfully fetched ${fullData?.length || 0} records from "${tableName}"`);
+          return fullData || [];
+        }
+      } catch (e) {
+        console.log(`❌ Failed to query "${tableName}":`, e);
+      }
+    }
+
+    // Step 5: Try raw SQL query as fallback
+    console.log('🔧 Trying raw SQL query as fallback...');
+    try {
+      const { data: sqlData, error: sqlError } = await supabase
+        .rpc('execute_sql', { query: 'SELECT * FROM public.indian_reservoir_levels LIMIT 5;' });
+      
+      console.log('🔧 Raw SQL result:', { data: sqlData, error: sqlError });
+    } catch (e) {
+      console.log('❌ Raw SQL failed:', e);
+    }
+
+    // If we get here, nothing worked
+    console.error('❌ ALL METHODS FAILED - Unable to access indian_reservoir_levels table');
+    return [];
+
   } catch (error) {
-    console.error('Error fetching reservoir data:', error);
+    console.error('💥 Critical error in fetchReservoirData:', error);
     return [];
   }
 };

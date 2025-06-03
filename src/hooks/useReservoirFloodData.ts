@@ -24,38 +24,38 @@ export const useReservoirFloodData = (): UseReservoirFloodDataResult => {
       setIsLoading(true);
       setError(null);
       
-      console.log('Starting reservoir data fetch...');
+      console.log('🚀 Starting reservoir data fetch...');
       const data = await fetchReservoirData();
-      console.log('Received reservoir data:', data);
+      console.log('📊 Received reservoir data:', data);
       
       setReservoirData(data);
       setLastUpdated(new Date());
       
       if (data.length > 0) {
-        console.log(`Successfully loaded ${data.length} reservoir records for flood calculations`);
+        console.log(`✅ Successfully loaded ${data.length} reservoir records for flood calculations`);
         toast({
-          title: "Reservoir data loaded",
+          title: "🎉 Reservoir data loaded successfully!",
           description: `Loaded ${data.length} reservoir records`,
           duration: 3000,
         });
       } else {
-        console.warn('No reservoir data received');
+        console.warn('⚠️ No reservoir data received - check console for debugging info');
         toast({
-          title: "No reservoir data",
-          description: "Unable to load reservoir data for enhanced flood calculations",
+          title: "⚠️ No reservoir data found",
+          description: "Check browser console for detailed debugging information. Using fallback flood data.",
           variant: "destructive",
-          duration: 5000,
+          duration: 8000,
         });
       }
     } catch (err) {
       const errorMessage = 'Failed to load reservoir data for flood calculations';
       setError(errorMessage);
-      console.error('Reservoir data error:', err);
+      console.error('💥 Reservoir data error:', err);
       toast({
-        title: "Reservoir data error",
-        description: errorMessage,
+        title: "❌ Reservoir data error",
+        description: `${errorMessage}. Check console for details.`,
         variant: "destructive",
-        duration: 5000,
+        duration: 8000,
       });
     } finally {
       setIsLoading(false);
