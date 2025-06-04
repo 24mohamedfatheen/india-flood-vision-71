@@ -1,5 +1,52 @@
 import { IMDRegionData } from '../services/imdApiService';
+import { imdApiService } from '../services/imdApiService'; // Import the live API service
+import { staticHistoricalRainfallData } from './staticHistoricalRainfallData'; // Import the new static historical data
+import { parseCsv } from '../utils/csvParser'; // Import the CSV parser
 
+// Hardcoded content of weather.csv for direct use in the browser environment
+// This avoids needing to read a file from the file system.
+const WEATHER_CSV_CONTENT = `
+,city,lat,lng,country,iso2,admin_name,capital,population,population_proper
+0,Mumbai,19.076,72.8777,India,IN,Maharashtra,admin,20000000,12442373
+1,Delhi,28.66,77.2167,India,IN,Delhi,admin,25000000,16314838
+2,Bengaluru,12.9719,77.5937,India,IN,Karnataka,admin,13193000,8443675
+3,Hyderabad,17.385,78.4867,India,IN,Telangana,admin,9746000,6993262
+4,Ahmedabad,23.03,72.58,India,IN,Gujarat,admin,8650000,5570585
+5,Chennai,13.0825,80.275,India,IN,Tamil Nadu,admin,9714000,4646732
+6,Kolkata,22.5667,88.3667,India,IN,West Bengal,admin,14681000,4496694
+7,Surat,21.1667,72.8333,India,IN,Gujarat,,6936000,4462006
+8,Pune,18.5203,73.8567,India,IN,Maharashtra,,6200000,3124458
+9,Jaipur,26.9167,75.8167,India,IN,Rajasthan,admin,3766000,3046163
+10,Lucknow,26.8467,80.9462,India,IN,Uttar Pradesh,admin,3382000,2815601
+11,Kanpur,26.4667,80.35,India,IN,Uttar Pradesh,,3100000,2920496
+12,Nagpur,21.1497,79.0806,India,IN,Maharashtra,,2900000,2405665
+13,Patna,25.61,85.1417,India,IN,Bihar,admin,2500000,2046652
+14,Indore,22.7167,75.8472,India,IN,Madhya Pradesh,,2400000,1964086
+15,Kochi,9.9667,76.2833,India,IN,Kerala,,2300000,602046
+16,Guwahati,26.1833,91.75,India,IN,Assam,,1100000,962334
+`;
+
+// Define an interface for the parsed CSV data
+interface CityData {
+  city: string;
+  lat: number;
+  lng: number;
+  admin_name: string; // This will be the state
+}
+
+// Parse the CSV content to dynamically generate regions
+const parsedCities = parseCsv<CityData>(WEATHER_CSV_CONTENT);
+
+// Map parsed cities to your existing regions format
+export const regions = parsedCities.map(city => ({
+  value: city.city.toLowerCase(),
+  label: city.city,
+  state: city.admin_name || 'N/A', // Use admin_name as state, fallback if empty
+  coordinates: [city.lat, city.lng] // Add coordinates for consistency
+}));
+
+// Ensure FloodData interface is consistent with IMDRegionData for flexibility
+// Added historicalRainfallData to this interface
 export interface FloodData {
   id: number;
   region: string;
@@ -7,9 +54,10 @@ export interface FloodData {
   riskLevel: 'low' | 'medium' | 'high' | 'severe';
   affectedArea: number;
   populationAffected: number;
-  coordinates: [number, number];  // [latitude, longitude]
+  coordinates: [number, number]; // [latitude, longitude]
   timestamp: string;
-  rainfall: number;
+  currentRainfall: number; // Renamed from 'rainfall' to be explicit about current rainfall
+  historicalRainfallData: { year: number; month: string; rainfall: number; }[]; // Updated type for multi-year data
   predictionAccuracy: number;
   riverLevel?: number;
   predictedFlood?: {
@@ -56,492 +104,8 @@ export interface FloodData {
   };
 }
 
-// Predefined regions with accurate coordinates
-export const regions = [
-  { value: 'mumbai', label: 'Mumbai', state: 'Maharashtra' },
-  { value: 'delhi', label: 'Delhi', state: 'Delhi' },
-  { value: 'kolkata', label: 'Kolkata', state: 'West Bengal' },
-  { value: 'chennai', label: 'Chennai', state: 'Tamil Nadu' },
-  { value: 'bangalore', label: 'Bangalore', state: 'Karnataka' },
-  { value: 'hyderabad', label: 'Hyderabad', state: 'Telangana' },
-  { value: 'ahmedabad', label: 'Ahmedabad', state: 'Gujarat' },
-  { value: 'pune', label: 'Pune', state: 'Maharashtra' },
-  { value: 'surat', label: 'Surat', state: 'Gujarat' },
-  { value: 'jaipur', label: 'Jaipur', state: 'Rajasthan' },
-  { value: 'lucknow', label: 'Lucknow', state: 'Uttar Pradesh' },
-  { value: 'kanpur', label: 'Kanpur', state: 'Uttar Pradesh' },
-  { value: 'nagpur', label: 'Nagpur', state: 'Maharashtra' },
-  { value: 'patna', label: 'Patna', state: 'Bihar' },
-  { value: 'indore', label: 'Indore', state: 'Madhya Pradesh' },
-  { value: 'kochi', label: 'Kochi', state: 'Kerala' },
-  { value: 'guwahati', label: 'Guwahati', state: 'Assam' }
-];
-
-// Default flood data with accurate coordinates
-export const floodData: FloodData[] = [
-  {
-    id: 1,
-    region: 'Mumbai',
-    state: 'Maharashtra',
-    riskLevel: 'high',
-    affectedArea: 280,
-    populationAffected: 2800000,
-    coordinates: [19.0760, 72.8777],
-    timestamp: new Date().toISOString(),
-    rainfall: 235,
-    predictionAccuracy: 87,
-    predictedFlood: {
-      date: '2025-07-15',
-      probabilityPercentage: 72,
-      timestamp: new Date().toISOString(),
-      expectedRainfall: 280,
-      expectedRiverRise: 1.8,
-      timeframe: '2025-07-10 to 2025-07-20',
-      predictedEvent: 'Monsoon Flooding',
-      predictedLocation: 'Mumbai and Suburban Areas',
-      supportingData: 'Based on increased precipitation forecasts and river monitoring',
-      source: {
-        name: 'Weather Services',
-        url: 'https://mausam.imd.gov.in/',
-        type: 'Weather'
-      }
-    },
-    riverData: {
-      name: 'Mithi River',
-      currentLevel: 4.8,
-      dangerLevel: 7.5,
-      warningLevel: 6.0,
-      normalLevel: 3.5,
-      trend: 'rising',
-      source: {
-        name: 'Water Resources',
-        url: 'https://cwc.gov.in/',
-        type: 'Water'
-      }
-    },
-    activeWarnings: [
-      {
-        type: 'warning',
-        issuedBy: 'Weather Services Mumbai',
-        issuedAt: new Date().toISOString(),
-        validUntil: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
-        message: 'Heavy rainfall warning for Mumbai and surrounding areas',
-        sourceUrl: 'https://mausam.imd.gov.in/'
-      }
-    ],
-    estimatedDamage: {
-      crops: 45,
-      properties: 120,
-      infrastructure: 85
-    }
-  },
-  {
-    id: 2,
-    region: 'Delhi',
-    state: 'Delhi',
-    riskLevel: 'medium',
-    affectedArea: 220,
-    populationAffected: 1500000,
-    coordinates: [28.7041, 77.1025],
-    timestamp: new Date().toISOString(),
-    rainfall: 185,
-    predictionAccuracy: 79,
-    predictedFlood: {
-      date: '2025-08-10',
-      probabilityPercentage: 58,
-      timestamp: new Date().toISOString(),
-      expectedRainfall: 210,
-      expectedRiverRise: 1.2,
-      source: {
-        name: 'Weather Services',
-        url: 'https://mausam.imd.gov.in/',
-        type: 'Weather'
-      }
-    },
-    riverData: {
-      name: 'Yamuna River',
-      currentLevel: 5.2,
-      dangerLevel: 7.5,
-      warningLevel: 6.0,
-      normalLevel: 3.5,
-      trend: 'stable',
-      source: {
-        name: 'Water Resources',
-        url: 'https://cwc.gov.in/',
-        type: 'Water'
-      }
-    }
-  },
-  {
-    id: 3,
-    region: 'Kolkata',
-    state: 'West Bengal',
-    riskLevel: 'severe',
-    affectedArea: 320,
-    populationAffected: 3100000,
-    coordinates: [22.5726, 88.3639],
-    timestamp: new Date().toISOString(),
-    rainfall: 310,
-    predictionAccuracy: 92,
-    predictedFlood: {
-      date: '2025-08-05',
-      probabilityPercentage: 85,
-      timestamp: new Date().toISOString(),
-      expectedRainfall: 350,
-      expectedRiverRise: 2.3,
-      source: {
-        name: 'Weather Services',
-        url: 'https://mausam.imd.gov.in/',
-        type: 'Weather'
-      }
-    },
-    riverData: {
-      name: 'Hooghly River',
-      currentLevel: 6.8,
-      dangerLevel: 7.5,
-      warningLevel: 6.0,
-      normalLevel: 3.5,
-      trend: 'rising',
-      source: {
-        name: 'Water Resources',
-        url: 'https://cwc.gov.in/',
-        type: 'Water'
-      }
-    },
-    activeWarnings: [
-      {
-        type: 'severe',
-        issuedBy: 'Weather Services Kolkata',
-        issuedAt: new Date().toISOString(),
-        validUntil: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
-        message: 'Severe rainfall alert for Kolkata metropolitan area',
-        sourceUrl: 'https://mausam.imd.gov.in/'
-      }
-    ],
-    estimatedDamage: {
-      crops: 75,
-      properties: 180,
-      infrastructure: 130
-    }
-  },
-  {
-    id: 4,
-    region: 'Chennai',
-    state: 'Tamil Nadu',
-    riskLevel: 'high',
-    affectedArea: 290,
-    populationAffected: 2500000,
-    coordinates: [13.0827, 80.2707],
-    timestamp: new Date().toISOString(),
-    rainfall: 250,
-    predictionAccuracy: 90,
-    predictedFlood: {
-      date: '2025-09-20',
-      probabilityPercentage: 78
-    }
-  },
-  {
-    id: 5,
-    region: 'Bangalore',
-    state: 'Karnataka',
-    riskLevel: 'low',
-    affectedArea: 90,
-    populationAffected: 900000,
-    coordinates: [12.9716, 77.5946],
-    timestamp: new Date().toISOString(),
-    rainfall: 100,
-    predictionAccuracy: 80,
-    predictedFlood: {
-      date: '2025-10-15',
-      probabilityPercentage: 32
-    }
-  },
-  {
-    id: 6,
-    region: 'Hyderabad',
-    state: 'Telangana',
-    riskLevel: 'medium',
-    affectedArea: 180,
-    populationAffected: 1200000,
-    coordinates: [17.3850, 78.4867],
-    timestamp: new Date().toISOString(),
-    rainfall: 150,
-    predictionAccuracy: 85,
-    predictedFlood: {
-      date: '2025-09-05',
-      probabilityPercentage: 54
-    }
-  },
-  {
-    id: 7,
-    region: 'Ahmedabad',
-    state: 'Gujarat',
-    riskLevel: 'medium',
-    affectedArea: 150,
-    populationAffected: 950000,
-    coordinates: [23.0225, 72.5714],
-    timestamp: new Date().toISOString(),
-    rainfall: 140,
-    predictionAccuracy: 82,
-    predictedFlood: {
-      date: '2025-08-25',
-      probabilityPercentage: 45
-    }
-  },
-  {
-    id: 8,
-    region: 'Pune',
-    state: 'Maharashtra',
-    riskLevel: 'medium',
-    affectedArea: 130,
-    populationAffected: 850000,
-    coordinates: [18.5204, 73.8567],
-    timestamp: new Date().toISOString(),
-    rainfall: 160,
-    predictionAccuracy: 84,
-    predictedFlood: {
-      date: '2025-07-30',
-      probabilityPercentage: 52
-    }
-  },
-  {
-    id: 9,
-    region: 'Surat',
-    state: 'Gujarat',
-    riskLevel: 'high',
-    affectedArea: 240,
-    populationAffected: 1800000,
-    coordinates: [21.1702, 72.8311],
-    timestamp: new Date().toISOString(),
-    rainfall: 220,
-    predictionAccuracy: 88,
-    predictedFlood: {
-      date: '2025-08-15',
-      probabilityPercentage: 68
-    }
-  },
-  {
-    id: 10,
-    region: 'Jaipur',
-    state: 'Rajasthan',
-    riskLevel: 'low',
-    affectedArea: 110,
-    populationAffected: 750000,
-    coordinates: [26.9139, 75.7873],
-    timestamp: new Date().toISOString(),
-    rainfall: 95,
-    predictionAccuracy: 78,
-    predictedFlood: {
-      date: '2025-08-30',
-      probabilityPercentage: 28
-    }
-  },
-  {
-    id: 11,
-    region: 'Lucknow',
-    state: 'Uttar Pradesh',
-    riskLevel: 'medium',
-    affectedArea: 160,
-    populationAffected: 980000,
-    coordinates: [26.8467, 80.9462],
-    timestamp: new Date().toISOString(),
-    rainfall: 165,
-    predictionAccuracy: 83,
-    predictedFlood: {
-      date: '2025-08-10',
-      probabilityPercentage: 56
-    }
-  },
-  {
-    id: 12,
-    region: 'Kanpur',
-    state: 'Uttar Pradesh',
-    riskLevel: 'high',
-    affectedArea: 230,
-    populationAffected: 1700000,
-    coordinates: [26.4499, 80.3319],
-    timestamp: new Date().toISOString(),
-    rainfall: 215,
-    predictionAccuracy: 87,
-    predictedFlood: {
-      date: '2025-08-05',
-      probabilityPercentage: 71
-    }
-  },
-  {
-    id: 13,
-    region: 'Nagpur',
-    state: 'Maharashtra',
-    riskLevel: 'low',
-    affectedArea: 100,
-    populationAffected: 700000,
-    coordinates: [21.1458, 79.0882],
-    timestamp: new Date().toISOString(),
-    rainfall: 110,
-    predictionAccuracy: 81,
-    predictedFlood: {
-      date: '2025-09-10',
-      probabilityPercentage: 35
-    }
-  },
-  {
-    id: 14,
-    region: 'Patna',
-    state: 'Bihar',
-    riskLevel: 'severe',
-    affectedArea: 350,
-    populationAffected: 2900000,
-    coordinates: [25.5941, 85.1376],
-    timestamp: new Date().toISOString(),
-    rainfall: 350,
-    predictionAccuracy: 95,
-    predictedFlood: {
-      date: '2025-08-01',
-      probabilityPercentage: 88,
-      timestamp: new Date().toISOString(),
-      expectedRainfall: 400,
-      expectedRiverRise: 2.5,
-      source: {
-        name: 'Weather Services',
-        url: 'https://mausam.imd.gov.in/',
-        type: 'Weather'
-      }
-    },
-    riverData: {
-      name: 'Ganga River',
-      currentLevel: 7.2,
-      dangerLevel: 7.5,
-      warningLevel: 6.0,
-      normalLevel: 3.5,
-      trend: 'falling',
-      source: {
-        name: 'Water Resources',
-        url: 'https://cwc.gov.in/',
-        type: 'Water'
-      }
-    },
-    activeWarnings: [
-      {
-        type: 'severe',
-        issuedBy: 'Weather Services Patna',
-        issuedAt: new Date().toISOString(),
-        validUntil: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
-        message: 'Severe rainfall alert for Patna and surrounding areas',
-        sourceUrl: 'https://mausam.imd.gov.in/'
-      }
-    ],
-    estimatedDamage: {
-      crops: 100,
-      properties: 250,
-      infrastructure: 180
-    }
-  },
-  {
-    id: 15,
-    region: 'Indore',
-    state: 'Madhya Pradesh',
-    riskLevel: 'low',
-    affectedArea: 80,
-    populationAffected: 650000,
-    coordinates: [22.7196, 75.8577],
-    timestamp: new Date().toISOString(),
-    rainfall: 90,
-    predictionAccuracy: 79,
-    predictedFlood: {
-      date: '2025-09-15',
-      probabilityPercentage: 30
-    }
-  },
-  {
-    id: 16,
-    region: 'Kochi',
-    state: 'Kerala',
-    riskLevel: 'high',
-    affectedArea: 260,
-    populationAffected: 1650000,
-    coordinates: [9.9312, 76.2600],
-    timestamp: new Date().toISOString(),
-    rainfall: 260,
-    predictionAccuracy: 90,
-    predictedFlood: {
-      date: '2025-07-25',
-      probabilityPercentage: 75,
-      timestamp: new Date().toISOString(),
-      expectedRainfall: 300,
-      expectedRiverRise: 2.0,
-      source: {
-        name: 'Weather Services',
-        url: 'https://mausam.imd.gov.in/',
-        type: 'Weather'
-      }
-    },
-    riverData: {
-      name: 'Thamiraparamba River',
-      currentLevel: 6.5,
-      dangerLevel: 7.5,
-      warningLevel: 6.0,
-      normalLevel: 3.5,
-      trend: 'stable',
-      source: {
-        name: 'Water Resources',
-        url: 'https://cwc.gov.in/',
-        type: 'Water'
-      }
-    }
-  },
-  {
-    id: 17,
-    region: 'Guwahati',
-    state: 'Assam',
-    riskLevel: 'severe',
-    affectedArea: 330,
-    populationAffected: 1920000,
-    coordinates: [26.1445, 91.7362],
-    timestamp: new Date().toISOString(),
-    rainfall: 330,
-    predictionAccuracy: 98,
-    predictedFlood: {
-      date: '2025-07-10',
-      probabilityPercentage: 89,
-      timestamp: new Date().toISOString(),
-      expectedRainfall: 370,
-      expectedRiverRise: 2.8,
-      source: {
-        name: 'Weather Services',
-        url: 'https://mausam.imd.gov.in/',
-        type: 'Weather'
-      }
-    },
-    riverData: {
-      name: 'Ganges River',
-      currentLevel: 8.0,
-      dangerLevel: 7.5,
-      warningLevel: 6.0,
-      normalLevel: 3.5,
-      trend: 'rising',
-      source: {
-        name: 'Water Resources',
-        url: 'https://cwc.gov.in/',
-        type: 'Water'
-      }
-    },
-    activeWarnings: [
-      {
-        type: 'severe',
-        issuedBy: 'Weather Services Guwahati',
-        issuedAt: new Date().toISOString(),
-        validUntil: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
-        message: 'Severe rainfall alert for Guwahati and surrounding areas',
-        sourceUrl: 'https://mausam.imd.gov.in/'
-      }
-    ],
-    estimatedDamage: {
-      crops: 120,
-      properties: 300,
-      infrastructure: 200
-    }
-  }
-];
+// This will now be a mutable array that stores either live data or static fallback
+export let floodData: FloodData[] = [];
 
 // Add proper type for the cached data with timestamp
 interface CachedIMDData {
@@ -559,17 +123,79 @@ const CACHE_VALIDITY_DURATION = 6 * 60 * 60 * 1000;
 // Local storage key for persisting cache
 const IMD_CACHE_KEY = 'imd_data_cache';
 
+// Helper function to map IMDRegionData to FloodData
+// This is necessary because IMDRegionData is what imdApiService returns,
+// but floodData and getFloodDataForRegion expect FloodData.
+const mapIMDRegionDataToFloodData = (imdData: IMDRegionData[]): FloodData[] => {
+  const currentYear = new Date().getFullYear();
+  return imdData.map((item, index) => {
+    // Attempt to get static historical data for the region and current year
+    const staticHistorical = staticHistoricalRainfallData[item.district.toLowerCase()]?.filter(d => d.year === currentYear);
+
+    // If static historical data for the current year is available, use it.
+    // Otherwise, generate a plausible pattern based on the current rainfall from live data.
+    const historicalDataForChart = staticHistorical && staticHistorical.length === 12
+      ? staticHistorical
+      : (() => {
+          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          const baseRainfall = item.rainfall; // This is the derived 'current rainfall' from reservoir data
+          return months.map((month, idx) => {
+            let monthlyRainfall = baseRainfall;
+            if (idx >= 5 && idx <= 8) { // Jun-Sep (monsoon peak)
+              monthlyRainfall = Math.floor(baseRainfall * (1.2 + (Math.random() * 0.4)));
+            } else if (idx >= 9 && idx <= 11) { // Oct-Dec (post-monsoon)
+              monthlyRainfall = Math.floor(baseRainfall * (0.6 + (Math.random() * 0.4)));
+            } else { // Jan-May (pre-monsoon)
+              monthlyRainfall = Math.floor(baseRainfall * (0.3 + (Math.random() * 0.3)));
+            }
+            return { year: currentYear, month, rainfall: Math.max(0, monthlyRainfall) };
+          });
+        })();
+
+    // Find coordinates from the dynamically generated regions
+    const regionCoords = regions.find(r => r.value === item.district.toLowerCase())?.coordinates || item.coordinates;
+
+    return {
+      id: index + 1, // Generate a simple ID
+      region: item.district,
+      state: item.state,
+      riskLevel: item.floodRiskLevel,
+      affectedArea: item.affectedArea,
+      populationAffected: item.populationAffected,
+      coordinates: regionCoords, // Use coordinates from parsed CSV if available
+      timestamp: new Date().toISOString(), // Use current time for consistency
+      currentRainfall: item.rainfall, // This is the current/derived rainfall
+      historicalRainfallData: historicalDataForChart, // Populate with generated or static historical data
+      predictionAccuracy: 85, // Default or derive from IMDRegionData if available
+      riverLevel: item.riverData?.currentLevel,
+      predictedFlood: item.predictedFlood,
+      riverData: item.riverData ? {
+        name: item.riverData.name,
+        currentLevel: item.riverData.currentLevel,
+        dangerLevel: item.riverData.dangerLevel,
+        warningLevel: item.riverData.warningLevel,
+        normalLevel: item.riverData.normalLevel,
+        trend: item.riverData.trend,
+        source: { name: 'Live Data', url: '' } // Placeholder source
+      } : undefined,
+      activeWarnings: item.activeWarnings,
+      estimatedDamage: { crops: 0, properties: 0, infrastructure: 0 } // Default or derive
+    };
+  });
+};
+
 // Load cache from localStorage on init
 const loadCachedData = (): void => {
   try {
     const storedCache = localStorage.getItem(IMD_CACHE_KEY);
     if (storedCache) {
       const parsedCache = JSON.parse(storedCache) as CachedIMDData;
-      
+
       // Check if cache is still valid
       if (new Date(parsedCache.expiresAt).getTime() > Date.now()) {
         imdDataCache = parsedCache;
         console.log('Loaded valid IMD data from local storage cache');
+        floodData = mapIMDRegionDataToFloodData(parsedCache.data); // Populate floodData on load
       } else {
         console.log('Cached IMD data expired, will fetch fresh data');
         localStorage.removeItem(IMD_CACHE_KEY);
@@ -584,110 +210,174 @@ const loadCachedData = (): void => {
 // Initialize by loading cache
 loadCachedData();
 
-// Improved API fetch function with proper caching
-export const fetchImdData = async (forceRefresh = false): Promise<IMDRegionData[]> => {
+// Improved API fetch function with proper caching and fallback
+export const fetchImdData = async (forceRefresh = false): Promise<FloodData[]> => {
   console.log('fetchImdData called, forceRefresh:', forceRefresh);
-  
+
   // Return cached data if available and not forcing refresh
   if (!forceRefresh && imdDataCache && new Date(imdDataCache.expiresAt).getTime() > Date.now()) {
     console.log('Using cached IMD data from', new Date(imdDataCache.timestamp).toLocaleString());
-    return imdDataCache.data;
+    floodData = mapIMDRegionDataToFloodData(imdDataCache.data); // Update global floodData
+    return floodData;
   }
-  
+
   try {
-    console.log('Fetching fresh IMD data...');
-    
-    // In a real app, this would be a fetch to an actual API endpoint
-    const imdApiService = await import('../services/imdApiService');
-    const imdData = await imdApiService.imdApiService.fetchFloodData();
-    
-    const now = new Date();
-    
-    // Create new cache object
-    const newCache: CachedIMDData = {
-      data: imdData,
-      timestamp: now.toISOString(),
-      expiresAt: new Date(now.getTime() + CACHE_VALIDITY_DURATION).toISOString()
-    };
-    
-    // Update in-memory cache
-    imdDataCache = newCache;
-    
-    // Persist cache to localStorage
-    try {
-      localStorage.setItem(IMD_CACHE_KEY, JSON.stringify(newCache));
-    } catch (storageError) {
-      console.warn('Failed to store IMD data in localStorage:', storageError);
+    console.log('Attempting to fetch fresh IMD data from live API...');
+
+    // Attempt to fetch from the live API
+    const liveImdData = await imdApiService.fetchFloodData();
+
+    if (liveImdData && liveImdData.length > 0) {
+      const now = new Date();
+      const newCache: CachedIMDData = {
+        data: liveImdData,
+        timestamp: now.toISOString(),
+        expiresAt: new Date(now.getTime() + CACHE_VALIDITY_DURATION).toISOString()
+      };
+
+      imdDataCache = newCache; // Update in-memory cache
+      try {
+        localStorage.setItem(IMD_CACHE_KEY, JSON.stringify(newCache)); // Persist cache
+      } catch (storageError) {
+        console.warn('Failed to store IMD data in localStorage:', storageError);
+      }
+
+      console.log('Fresh IMD data fetched from live API and cached at', now.toLocaleString());
+      floodData = mapIMDRegionDataToFloodData(liveImdData); // Update global floodData
+      return floodData;
+    } else {
+      console.warn('Live API returned no data. Falling back to static data.');
+      // Fallback to static data from staticHistoricalRainfallData
+      // Create FloodData objects for each region, populating historicalRainfallData
+      floodData = regions.map(r => {
+        const staticHistorical = staticHistoricalRainfallData[r.value];
+        const currentYear = new Date().getFullYear();
+        const currentYearData = staticHistorical?.filter(d => d.year === currentYear);
+
+        // If specific year data is not available in staticHistoricalRainfallData,
+        // we'll use a placeholder or average for currentRainfall and generate historical
+        // for the current year based on that.
+        let currentRainfallValue = 0;
+        if (currentYearData && currentYearData.length > 0) {
+          currentRainfallValue = currentYearData.reduce((sum, item) => sum + item.rainfall, 0) / currentYearData.length;
+        } else if (staticHistorical && staticHistorical.length > 0) {
+          // If current year data is not present, take an average from all available static years
+          const allStaticRainfall = staticHistorical.map(d => d.rainfall);
+          currentRainfallValue = allStaticRainfall.reduce((sum, val) => sum + val, 0) / allStaticRainfall.length;
+        }
+
+        return {
+          id: regions.indexOf(r) + 1,
+          region: r.label,
+          state: r.state,
+          riskLevel: 'low' as const, // Default, could be derived from static data if available
+          affectedArea: 0,
+          populationAffected: 0,
+          coordinates: r.coordinates, // Use coordinates from regions
+          timestamp: new Date().toISOString(),
+          currentRainfall: Math.floor(currentRainfallValue),
+          historicalRainfallData: staticHistorical || [], // Use the full static historical data
+          predictionAccuracy: 70,
+        };
+      });
+      return floodData;
     }
-    
-    console.log('Fresh IMD data fetched and cached at', now.toLocaleString());
-    return imdData;
+
   } catch (error) {
-    console.error('Error fetching IMD data:', error);
-    
+    console.error('Error fetching IMD data from live API, falling back to static:', error);
+
     // If fetch fails but we have cached data, use it even if expired
     if (imdDataCache) {
       console.log('Using expired cached data due to fetch failure');
-      return imdDataCache.data;
+      floodData = mapIMDRegionDataToFloodData(imdDataCache.data); // Update global floodData
+      return floodData;
     }
-    
-    // Return empty array if no cached data available
-    return [];
+
+    // Return static data if no cached data available and live fetch failed
+    console.log('No cached data, returning static data.');
+    // Fallback to static data from staticHistoricalRainfallData
+    floodData = regions.map(r => {
+      const staticHistorical = staticHistoricalRainfallData[r.value];
+      const currentYear = new Date().getFullYear();
+      const currentYearData = staticHistorical?.filter(d => d.year === currentYear);
+
+      let currentRainfallValue = 0;
+      if (currentYearData && currentYearData.length > 0) {
+        currentRainfallValue = currentYearData.reduce((sum, item) => sum + item.rainfall, 0) / currentYearData.length;
+      } else if (staticHistorical && staticHistorical.length > 0) {
+        const allStaticRainfall = staticHistorical.map(d => d.rainfall);
+        currentRainfallValue = allStaticRainfall.reduce((sum, val) => sum + val, 0) / allStaticRainfall.length;
+      }
+
+      return {
+        id: regions.indexOf(r) + 1,
+        region: r.label,
+        state: r.state,
+        riskLevel: 'low' as const,
+        affectedArea: 0,
+        populationAffected: 0,
+        coordinates: r.coordinates,
+        timestamp: new Date().toISOString(),
+        currentRainfall: Math.floor(currentRainfallValue),
+        historicalRainfallData: staticHistorical || [],
+        predictionAccuracy: 70,
+      };
+    });
+    return floodData;
   }
 };
 
 // Improved function to get region data with consistency
 export const getFloodDataForRegion = (region: string): FloodData | null => {
-  // Check if the region matches any predefined regions
   const regionLower = region.toLowerCase();
-  const matchingRegion = floodData.find(data => 
+  const matchingRegion = floodData.find(data =>
     data.region.toLowerCase() === regionLower
   );
-  
+
   if (matchingRegion) {
     return matchingRegion;
   }
-  
-  // If no match is found, return Mumbai as default
-  return floodData[0];
+
+  // If no match is found, return Mumbai as default from the current floodData
+  return floodData[0] || null; // Ensure floodData[0] exists
 };
 
 // Add functions for chart section
-export const getHistoricalRainfallData = (region: string) => {
-  // Return historical rainfall data for the selected region
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  
-  // Generate realistic data based on the region's risk level
+export const getHistoricalRainfallData = (region: string, year: number) => {
   const regionData = getFloodDataForRegion(region);
-  const riskLevelMultiplier = {
-    'low': 0.7,
-    'medium': 1.0,
-    'high': 1.3,
-    'severe': 1.6
-  };
-  
-  const multiplier = riskLevelMultiplier[regionData?.riskLevel || 'medium'];
-  
-  // Generate monthly data with a monsoon pattern (higher in Jul-Sep)
-  return months.map((month, index) => {
-    // Higher rainfall during monsoon months (Jun-Sep)
-    let baseRainfall = 0;
-    if (index >= 5 && index <= 8) {  // Jun-Sep
-      baseRainfall = Math.floor(Math.random() * 200) + 100; // 100-300mm during monsoon
-    } else if (index >= 9 && index <= 11) { // Oct-Dec
-      baseRainfall = Math.floor(Math.random() * 100) + 50; // 50-150mm post-monsoon
-    } else { // Jan-May
-      baseRainfall = Math.floor(Math.random() * 50) + 10; // 10-60mm pre-monsoon
-    }
-    
-    // Apply risk level multiplier
-    const rainfall = Math.floor(baseRainfall * multiplier);
-    
-    return {
-      month,
-      rainfall
-    };
-  });
+
+  if (!regionData || !regionData.historicalRainfallData || regionData.historicalRainfallData.length === 0) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return months.map(month => ({ month, rainfall: 0 }));
+  }
+
+  // Filter historical data by the selected year
+  const yearData = regionData.historicalRainfallData.filter(d => d.year === year);
+
+  if (yearData.length === 0) {
+    // If no specific year data is found, we can try to generate a plausible pattern
+    // based on the overall average of the static data for that region if available,
+    // or a default.
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const allRainfallValues = regionData.historicalRainfallData.map(d => d.rainfall);
+    const averageRainfall = allRainfallValues.length > 0 ? allRainfallValues.reduce((sum, val) => sum + val, 0) / allRainfallValues.length : 0;
+
+    // Generate a plausible pattern for the selected year based on average
+    return months.map((month, idx) => {
+      let monthlyRainfall = averageRainfall;
+      if (idx >= 5 && idx <= 8) { // Jun-Sep (monsoon peak)
+        monthlyRainfall = Math.floor(averageRainfall * (1.2 + (Math.random() * 0.4)));
+      } else if (idx >= 9 && idx <= 11) { // Oct-Dec (post-monsoon)
+        monthlyRainfall = Math.floor(averageRainfall * (0.6 + (Math.random() * 0.4)));
+      } else { // Jan-May (pre-monsoon)
+        monthlyRainfall = Math.floor(averageRainfall * (0.3 + (Math.random() * 0.3)));
+      }
+      return { month, rainfall: Math.max(0, monthlyRainfall) };
+    });
+  }
+
+  // If year-specific data is found, return it
+  return yearData.map(d => ({ month: d.month, rainfall: d.rainfall }));
 };
 
 export const getPredictionData = (region: string) => {
@@ -699,13 +389,13 @@ export const getPredictionData = (region: string) => {
     'high': 50,
     'severe': 70
   };
-  
+
   const baseValue = riskLevelBase[regionData?.riskLevel || 'medium'];
-  
+
   // Generate 10 days of prediction data with some randomness
   return Array.from({ length: 10 }, (_, i) => {
     let trendFactor = 1;
-    
+
     // Create a trend based on day
     if (i < 3) {
       // First 3 days - increasing trend
@@ -717,12 +407,12 @@ export const getPredictionData = (region: string) => {
       // Last days - decreasing trend
       trendFactor = 1.15 - ((i - 6) * 0.1);
     }
-    
+
     // Calculate probability with some randomness
-    const probability = Math.min(95, Math.max(5, 
+    const probability = Math.min(95, Math.max(5,
       baseValue * trendFactor + (Math.random() * 10 - 5)
     ));
-    
+
     return {
       day: i + 1,
       probability: Number(probability.toFixed(1))

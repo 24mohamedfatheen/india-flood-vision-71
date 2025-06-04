@@ -1,7 +1,8 @@
+import { supabase } from '../integrations/supabase/client'; // Import Supabase client
+import { regions } from '../data/floodData'; // Import regions for mapping (now dynamic)
+import { ReservoirData } from './reservoirDataService'; // Import ReservoirData interface
 
-import { regions } from '../data/floodData';
-
-// Types for IMD API responses
+// Types for IMD API responses (unchanged)
 export type IMDWeatherWarning = {
   type: 'alert' | 'warning' | 'severe' | 'watch';
   issuedBy: string;
@@ -25,7 +26,7 @@ export type IMDRiverData = {
 export type IMDRegionData = {
   state: string;
   district: string;
-  rainfall: number;
+  rainfall: number; // This will be derived from reservoir data
   floodRiskLevel: 'low' | 'medium' | 'high' | 'severe';
   populationAffected: number;
   affectedArea: number;
@@ -40,7 +41,7 @@ export type IMDRegionData = {
   coordinates: [number, number];
 };
 
-// Map for accurate coordinates of each city
+// Map for accurate coordinates of each city (still useful for lookup if not in CSV)
 const cityCoordinates: Record<string, [number, number]> = {
   'Mumbai': [19.0760, 72.8777],
   'Delhi': [28.7041, 77.1025],
@@ -51,7 +52,7 @@ const cityCoordinates: Record<string, [number, number]> = {
   'Ahmedabad': [23.0225, 72.5714],
   'Pune': [18.5204, 73.8567],
   'Surat': [21.1702, 72.8311],
-  'Jaipur': [26.9139, 75.7873],
+  'Jaipur': [26.9139, 75.8167],
   'Lucknow': [26.8467, 80.9462],
   'Kanpur': [26.4499, 80.3319],
   'Nagpur': [21.1458, 79.0882],
@@ -61,144 +62,136 @@ const cityCoordinates: Record<string, [number, number]> = {
   'Guwahati': [26.1445, 91.7362]
 };
 
-// Use a fixed seed for consistent random data generation 
-// This ensures that the randomly generated data remains consistent between page refreshes
-const consistentRandom = (() => {
-  const seed = 42; // Fixed seed for consistency
-  let current = seed;
-  
-  return () => {
-    current = (current * 9301 + 49297) % 233280;
-    return current / 233280;
-  };
-})();
+// Helper to get state for region (now uses the dynamic regions array)
+const getStateForRegion = (regionName: string): string => {
+  const foundRegion = regions.find(r => r.value === regionName.toLowerCase());
+  return foundRegion ? foundRegion.state : 'N/A';
+};
 
-// Simulated API service with consistent data generation
+// Live API service using Supabase
 export const imdApiService = {
-  // Fetch data (simulated)
   fetchFloodData: async (): Promise<IMDRegionData[]> => {
-    console.log('Fetching data from Weather Services API...');
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Generate simulated data based on states and districts
-    const statesData: IMDRegionData[] = regions.map(region => {
-      // Generate consistent data for each region
-      const randomValue = consistentRandom();
-      
-      // Use the random value to generate consistent rainfall between 50-450mm
-      const rainfall = Math.floor(randomValue * 400) + 50;
-      
-      const riskLevels: ('low' | 'medium' | 'high' | 'severe')[] = ['low', 'medium', 'high', 'severe'];
-      const riskIndex = Math.min(
-        Math.floor((rainfall - 50) / 100), // Higher rainfall = higher risk
-        3 // Max index for riskLevels array
-      );
-      const floodRiskLevel = riskLevels[riskIndex];
-      
-      // Population affected scales with risk level
-      const populationMultiplier = {
-        'low': 5000,
-        'medium': 20000,
-        'high': 50000,
-        'severe': 100000
-      };
-      const populationAffected = Math.floor(consistentRandom() * populationMultiplier[floodRiskLevel]) + 1000;
-      
-      // Affected area also scales with risk level
-      const areaMultiplier = {
-        'low': 20,
-        'medium': 50,
-        'high': 100,
-        'severe': 200
-      };
-      const affectedArea = Math.floor(consistentRandom() * areaMultiplier[floodRiskLevel]) + 10;
-      
-      // Only add river data for high and severe risk areas
-      let riverData: IMDRiverData | undefined;
-      if (floodRiskLevel === 'high' || floodRiskLevel === 'severe') {
-        const riverNames = {
-          'Maharashtra': 'Godavari',
-          'West Bengal': 'Hooghly',
-          'Tamil Nadu': 'Cauvery',
-          'Delhi': 'Yamuna',
-          'Karnataka': 'Krishna',
-          'Kerala': 'Periyar',
-          'Assam': 'Brahmaputra',
-          'Bihar': 'Ganga',
-          'Uttar Pradesh': 'Yamuna',
-          'Telangana': 'Krishna',
-          'Gujarat': 'Sabarmati',
-          'Rajasthan': 'Luni',
-          'Madhya Pradesh': 'Narmada'
-        };
-        
-        const defaultRiverName = 'Local River';
-        const riverName = riverNames[region.state as keyof typeof riverNames] || defaultRiverName;
-        
-        // Make river level consistent but based on the risk level
-        const currentLevel = 2 + (riskIndex * 1.5) + (consistentRandom() * 0.5);
-        
-        riverData = {
-          name: riverName,
-          currentLevel: parseFloat(currentLevel.toFixed(1)),
-          dangerLevel: 7.5,
-          warningLevel: 6.0,
-          normalLevel: 3.5,
-          trend: consistentRandom() > 0.5 ? 'rising' : (consistentRandom() > 0.5 ? 'falling' : 'stable'),
-          lastUpdated: new Date().toISOString()
-        };
+    console.log('Fetching live data from Supabase (indian_reservoir_levels)...');
+
+    try {
+      // Fetch all reservoir data
+      const { data: reservoirs, error } = await supabase
+        .from('indian_reservoir_levels')
+        .select('reservoir_name, state, district, current_level_mcm, capacity_mcm, percentage_full, inflow_cusecs, outflow_cusecs, last_updated, lat, long');
+
+      if (error) {
+        console.error('Error fetching reservoir data from Supabase:', error);
+        return []; // Return empty array on error
       }
-      
-      // Add warnings for high and severe risk areas
-      let activeWarnings: IMDWeatherWarning[] | undefined;
-      if (floodRiskLevel === 'high' || floodRiskLevel === 'severe') {
-        activeWarnings = [{
-          type: floodRiskLevel === 'severe' ? 'severe' : 'warning',
-          issuedBy: 'Weather Services ' + region.state,
-          issuedAt: new Date().toISOString(),
-          validUntil: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(), // Valid for 72 hours
-          message: floodRiskLevel === 'severe' 
-            ? `Severe rainfall warning for ${region.label} and surrounding areas` 
-            : `Heavy rainfall warning for ${region.label} area`,
-          affectedAreas: `${region.label}, ${region.state}`,
-          sourceUrl: 'https://mausam.imd.gov.in/'
-        }];
+
+      if (!reservoirs || reservoirs.length === 0) {
+        console.warn('No reservoir data found in Supabase.');
+        return []; // Return empty array if no data
       }
-      
-      // Add flood predictions based on risk level with consistent values
-      const fixedDate = new Date();
-      fixedDate.setDate(fixedDate.getDate() + Math.floor(consistentRandom() * 10));
-      
-      const predictedFlood = {
-        date: fixedDate.toISOString().split('T')[0],
-        probabilityPercentage: Math.floor(consistentRandom() * 30) + (riskIndex * 20), // Higher risk = higher probability
-        expectedRainfall: rainfall * (0.8 + consistentRandom() * 0.4), // Expected rainfall similar to current
-        timeframe: `Next ${Math.floor(consistentRandom() * 3) + 1} days`
-      };
-      
-      // Use accurate coordinates for each city
-      const coordinates = cityCoordinates[region.label] || [
-        20.5937 + (consistentRandom() * 10 - 5), // Default fallback with randomization
-        78.9629 + (consistentRandom() * 10 - 5)
-      ];
-      
-      return {
-        state: region.state,
-        district: region.label,
-        rainfall,
-        floodRiskLevel,
-        populationAffected,
-        affectedArea,
-        riverData,
-        activeWarnings,
-        predictedFlood,
-        coordinates
-      };
-    });
-    
-    console.log('Weather data fetched successfully:', statesData);
-    return statesData;
+
+      console.log(`Successfully fetched ${reservoirs.length} reservoir records from Supabase.`);
+
+      // Process reservoir data to fit IMDRegionData structure
+      const regionDataMap = new Map<string, IMDRegionData>();
+
+      // Initialize regionDataMap with all regions to ensure all are present, even if no reservoir data
+      // Use the dynamically loaded 'regions' here
+      regions.forEach(region => {
+        // Prefer coordinates from the regions array (derived from weather.csv)
+        const defaultCoordinates = region.coordinates || cityCoordinates[region.label] || [0,0];
+        regionDataMap.set(region.label.toLowerCase(), {
+          state: region.state,
+          district: region.label,
+          rainfall: 0, // Default to 0, will be updated
+          floodRiskLevel: 'low', // Default, will be updated
+          populationAffected: 0,
+          affectedArea: 0,
+          coordinates: defaultCoordinates,
+          // Other fields can be undefined or default
+        });
+      });
+
+
+      reservoirs.forEach((res: ReservoirData) => {
+        const regionName = res.district || res.state || 'unknown'; // Use district or state as region identifier
+        const lowerRegionName = regionName.toLowerCase();
+
+        // Find the corresponding predefined region to get its label
+        const predefinedRegion = regions.find(r =>
+          r.label.toLowerCase() === lowerRegionName || r.state.toLowerCase() === lowerRegionName
+        );
+        const currentRegionLabel = predefinedRegion ? predefinedRegion.label : regionName;
+        const currentRegionState = predefinedRegion ? predefinedRegion.state : getStateForRegion(regionName);
+
+        // Get or create IMDRegionData for this region
+        let regionEntry = regionDataMap.get(currentRegionLabel.toLowerCase());
+        if (!regionEntry) {
+          regionEntry = {
+            state: currentRegionState,
+            district: currentRegionLabel,
+            rainfall: 0,
+            floodRiskLevel: 'low',
+            populationAffected: 0,
+            affectedArea: 0,
+            coordinates: cityCoordinates[currentRegionLabel] || [res.lat || 0, res.long || 0],
+          };
+          regionDataMap.set(currentRegionLabel.toLowerCase(), regionEntry);
+        }
+
+        // --- Map Reservoir Data to IMDRegionData fields ---
+        // For 'rainfall', we'll use 'percentage_full' as a proxy for water abundance/flood potential.
+        // Scale it to a plausible rainfall range (e.g., 0-400mm)
+        const percentageFull = res.percentage_full || 0;
+        const inflowCusecs = res.inflow_cusecs || 0;
+        const outflowCusecs = res.outflow_cusecs || 0;
+
+        // Simple aggregation: take the highest percentage full or inflow for a region for now
+        // Or, if multiple reservoirs, average them or pick the most critical one.
+        // For simplicity, let's just update if the current reservoir indicates a higher "rainfall" proxy
+        const currentRainfallProxy = Math.floor(percentageFull * 3); // Scale 0-100% to 0-300mm
+        if (currentRainfallProxy > regionEntry.rainfall) {
+          regionEntry.rainfall = currentRainfallProxy;
+        }
+
+        // Determine flood risk level based on percentage full and inflow
+        let riskLevel: IMDRegionData['floodRiskLevel'] = 'low';
+        if (percentageFull > 90 || inflowCusecs > 10000) {
+          riskLevel = 'severe';
+        } else if (percentageFull > 80 || inflowCusecs > 5000) {
+          riskLevel = 'high';
+        } else if (percentageFull > 70 || inflowCusecs > 1000) {
+          riskLevel = 'medium';
+        }
+        // Update risk level if this reservoir indicates a higher risk
+        const riskLevelOrder = { 'low': 0, 'medium': 1, 'high': 2, 'severe': 3 };
+        if (riskLevelOrder[riskLevel] > riskLevelOrder[regionEntry.floodRiskLevel]) {
+          regionEntry.floodRiskLevel = riskLevel;
+        }
+
+        // Populate riverData if relevant
+        if (res.reservoir_name) {
+          // If there's already river data, decide whether to update (e.g., take the highest level)
+          if (!regionEntry.riverData || (res.current_level_mcm && res.current_level_mcm > (regionEntry.riverData.currentLevel || 0))) {
+            regionEntry.riverData = {
+              name: res.reservoir_name,
+              currentLevel: res.current_level_mcm || 0,
+              dangerLevel: res.capacity_mcm ? res.capacity_mcm * 0.95 : 7.5, // 95% of capacity as danger
+              warningLevel: res.capacity_mcm ? res.capacity_mcm * 0.85 : 6.0, // 85% of capacity as warning
+              normalLevel: res.capacity_mcm ? res.capacity_mcm * 0.5 : 3.5, // 50% of capacity as normal
+              trend: (inflowCusecs > outflowCusecs) ? 'rising' : (outflowCusecs > inflowCusecs ? 'falling' : 'stable'),
+              lastUpdated: res.last_updated || new Date().toISOString()
+            };
+          }
+        }
+      });
+
+      const resultData = Array.from(regionDataMap.values());
+      console.log('Live IMD data fetched and processed successfully:', resultData);
+      return resultData;
+
+    } catch (error) {
+      console.error('Error fetching live IMD data from Supabase:', error);
+      return []; // Return empty array on critical failure
+    }
   }
 };
