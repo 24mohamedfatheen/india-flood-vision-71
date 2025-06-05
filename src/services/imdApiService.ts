@@ -55,14 +55,14 @@ const cityCoordinates: Record<string, [number, number]> = {
   'Ahmedabad': [23.0225, 72.5714],
   'Pune': [18.5204, 73.8567],
   'Surat': [21.1702, 72.8311],
-  'Jaipur': [26.9139, 75.8167],
+  'Jaipur': [26.9167, 75.8167],
   'Lucknow': [26.8467, 80.9462],
-  'Kanpur': [26.4499, 80.3319],
-  'Nagpur': [21.1497, 79.0882],
-  'Patna': [25.5941, 85.1417],
+  'Kanpur': [26.4667, 80.35],
+  'Nagpur': [21.1497, 79.0806],
+  'Patna': [25.61, 85.1417],
   'Indore': [22.7167, 75.8472],
   'Kochi': [9.9312, 76.2600],
-  'Guwahati': [26.1445, 91.7362]
+  'Guwahati': [26.1833, 91.75]
 };
 
 // Helper to get state for region (now uses the dynamic regions array)
@@ -153,7 +153,7 @@ export const imdApiService = {
         const outflowCusecs = res.outflow_cusecs || 0;
 
         // DEBUG LOG: Log raw values from each reservoir record
-        console.log(`DEBUG_IMD_RAW: Reservoir ${res.reservoir_name} in ${res.district}: percentage_full=${percentageFull}, inflow_cusecs=${inflowCusecs}`);
+        console.log(`DEBUG_IMD_RAW: Reservoir=${res.reservoir_name}, District=${res.district}, PercentageFull=${percentageFull}, InflowCusecs=${inflowCusecs}`);
 
 
         if (percentageFull > regionEntry.reservoirPercentage) {
@@ -164,11 +164,14 @@ export const imdApiService = {
         // Determine flood risk level based on aggregated percentage full and inflow
         // Adjusted thresholds for risk levels based on percentage full and inflow
         let riskLevel: IMDRegionData['floodRiskLevel'] = 'low';
-        if (regionEntry.reservoirPercentage >= 95 || regionEntry.inflowCusecs >= 25000) { // Very high
+        // **ADJUSTED THRESHOLDS for more sensitive risk detection**
+        // These thresholds were adjusted aggressively in the last response.
+        // We need to see the raw data to confirm if they are appropriate.
+        if (regionEntry.reservoirPercentage >= 80 || regionEntry.inflowCusecs >= 5000) { // Very high
           riskLevel = 'severe';
-        } else if (regionEntry.reservoirPercentage >= 85 || regionEntry.inflowCusecs >= 10000) { // High
+        } else if (regionEntry.reservoirPercentage >= 60 || regionEntry.inflowCusecs >= 1000) { // High
           riskLevel = 'high';
-        } else if (regionEntry.reservoirPercentage >= 70 || regionEntry.inflowCusecs >= 2000) { // Medium
+        } else if (regionEntry.reservoirPercentage >= 40 || regionEntry.inflowCusecs >= 200) { // Medium
           riskLevel = 'medium';
         }
         // Update risk level if this reservoir's contribution leads to a higher risk
@@ -207,3 +210,4 @@ export const imdApiService = {
     }
   }
 };
+
