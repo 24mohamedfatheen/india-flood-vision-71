@@ -1,3 +1,4 @@
+
 import { supabase } from '../integrations/supabase/client'; // Import Supabase client
 import { regions } from '../data/floodData'; // Import regions for mapping (now dynamic)
 import { ReservoirData } from './reservoirDataService'; // Import ReservoirData interface
@@ -98,7 +99,9 @@ export const imdApiService = {
       // Use the dynamically loaded 'regions' here
       regions.forEach(region => {
         // Prefer coordinates from the regions array (derived from weather.csv)
-        const defaultCoordinates = region.coordinates || cityCoordinates[region.label] || [0,0];
+        const defaultCoordinates: [number, number] = region.coordinates && region.coordinates.length >= 2 
+          ? [region.coordinates[0], region.coordinates[1]] 
+          : cityCoordinates[region.label] || [0, 0];
         regionDataMap.set(region.label.toLowerCase(), {
           state: region.state,
           district: region.label,
@@ -110,7 +113,6 @@ export const imdApiService = {
           // Other fields can be undefined or default
         });
       });
-
 
       reservoirs.forEach((res: ReservoirData) => {
         const regionName = res.district || res.state || 'unknown'; // Use district or state as region identifier
@@ -126,6 +128,7 @@ export const imdApiService = {
         // Get or create IMDRegionData for this region
         let regionEntry = regionDataMap.get(currentRegionLabel.toLowerCase());
         if (!regionEntry) {
+          const fallbackCoordinates: [number, number] = cityCoordinates[currentRegionLabel] || [res.lat || 0, res.long || 0];
           regionEntry = {
             state: currentRegionState,
             district: currentRegionLabel,
@@ -133,7 +136,7 @@ export const imdApiService = {
             floodRiskLevel: 'low',
             populationAffected: 0,
             affectedArea: 0,
-            coordinates: cityCoordinates[currentRegionLabel] || [res.lat || 0, res.long || 0],
+            coordinates: fallbackCoordinates,
           };
           regionDataMap.set(currentRegionLabel.toLowerCase(), regionEntry);
         }
