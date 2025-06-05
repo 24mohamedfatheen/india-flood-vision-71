@@ -55,14 +55,14 @@ const cityCoordinates: Record<string, [number, number]> = {
   'Ahmedabad': [23.0225, 72.5714],
   'Pune': [18.5204, 73.8567],
   'Surat': [21.1702, 72.8311],
-  'Jaipur': [26.9167, 75.8167],
+  'Jaipur': [26.9139, 75.8167],
   'Lucknow': [26.8467, 80.9462],
-  'Kanpur': [26.4667, 80.35],
+  'Kanpur': [26.4499, 80.3319],
   'Nagpur': [21.1497, 79.0806],
-  'Patna': [25.61, 85.1417],
+  'Patna': [25.5941, 85.1417],
   'Indore': [22.7167, 75.8472],
   'Kochi': [9.9312, 76.2600],
-  'Guwahati': [26.1833, 91.75]
+  'Guwahati': [26.1445, 91.7362]
 };
 
 // Helper to get state for region (now uses the dynamic regions array)
@@ -97,80 +97,97 @@ export const imdApiService = {
       // Process reservoir data to fit IMDRegionData structure
       const regionDataMap = new Map<string, IMDRegionData>();
 
-      // Initialize regionDataMap with all regions to ensure all are present, even if no reservoir data
-      // Use the dynamically loaded 'regions' here
+      // Initialize regionDataMap with all regions to ensure all are present
       regions.forEach(region => {
-        // Prefer coordinates from the regions array (derived from weather.csv)
         const defaultCoordinates: [number, number] = region.coordinates && region.coordinates.length >= 2 
           ? [region.coordinates[0], region.coordinates[1]] 
           : cityCoordinates[region.label] || [0, 0];
         regionDataMap.set(region.label.toLowerCase(), {
           state: region.state,
           district: region.label,
-          reservoirPercentage: 0, // Initialized
-          inflowCusecs: 0,        // Initialized
-          floodRiskLevel: 'low', // Default, will be updated
+          reservoirPercentage: 0, 
+          inflowCusecs: 0,        
+          floodRiskLevel: 'low', 
           populationAffected: 0,
           affectedArea: 0,
           coordinates: defaultCoordinates,
-          // Other fields can be undefined or default
         });
       });
 
+      // Special handling for an 'unknown' region to catch unmapped data
+      // Ensure 'unknown' region is initialized.
+      if (!regionDataMap.has('unknown')) {
+          regionDataMap.set('unknown', {
+              state: 'N/A', // Or a more appropriate default state
+              district: 'unknown',
+              reservoirPercentage: 0,
+              inflowCusecs: 0,
+              floodRiskLevel: 'low',
+              populationAffected: 0,
+              affectedArea: 0,
+              coordinates: [20.5937, 78.9629], // Center of India or a sensible default
+          });
+      }
+
 
       reservoirs.forEach((res: ReservoirData) => {
-        // More robust region name determination
-        let regionName = 'unknown';
+        let regionName: string = 'unknown'; // Default to unknown
+        let matchedRegion = false;
+
+        // 1. Try to match by district name first
         if (res.district) {
-            // Try to find a matching region by district label
-            const matchedRegionByDistrict = regions.find(r => r.label.toLowerCase() === res.district.toLowerCase());
-            if (matchedRegionByDistrict) {
-                regionName = matchedRegionByDistrict.label;
-            } else {
-                // If district doesn't match a label, use district itself (and it might still map to unknown later if not in cityCoordinates)
-                regionName = res.district;
-            }
-        } else if (res.state) {
-            // If no district, try to find a matching region by state
-            const matchedRegionByState = regions.find(r => r.state.toLowerCase() === res.state.toLowerCase());
-            if (matchedRegionByState) {
-                regionName = matchedRegionByState.label; // Use the region's label if state matches
-            } else {
-                regionName = res.state; // Use state itself if no region matches
+            const potentialRegion = regions.find(r => r.label.toLowerCase() === res.district.toLowerCase());
+            if (potentialRegion) {
+                regionName = potentialRegion.label;
+                matchedRegion = true;
             }
         }
         
-        const lowerRegionName = regionName.toLowerCase();
+        // 2. If no district match, try to match by state
+        if (!matchedRegion && res.state) {
+            const potentialRegion = regions.find(r => r.state.toLowerCase() === res.state.toLowerCase());
+            if (potentialRegion) {
+                regionName = potentialRegion.label; // Use the region's main label
+                matchedRegion = true;
+            }
+        }
         
+        // If still no match, it remains 'unknown' based on the default initialization
+        const lowerRegionName = regionName.toLowerCase();
+
         // Get or create IMDRegionData for this region
         let regionEntry = regionDataMap.get(lowerRegionName);
         if (!regionEntry) {
-          const fallbackCoordinates: [number, number] = cityCoordinates[regionName] || [res.lat || 0, res.long || 0];
-          regionEntry = {
-            state: getStateForRegion(regionName), // Use helper for state
-            district: regionName,
-            reservoirPercentage: 0,
-            inflowCusecs: 0,
-            floodRiskLevel: 'low',
-            populationAffected: 0,
-            affectedArea: 0,
-            coordinates: fallbackCoordinates,
-          };
-          regionDataMap.set(lowerRegionName, regionEntry);
+            // This should ideally not happen if 'regions' contains all relevant cities and 'unknown' is initialized.
+            // But as a safeguard for unexpected district/state names from Supabase not in our CSV.
+            const fallbackCoordinates: [number, number] = cityCoordinates[regionName] || [res.lat || 0, res.long || 0];
+            regionEntry = {
+                state: getStateForRegion(regionName), 
+                district: regionName,
+                reservoirPercentage: 0,
+                inflowCusecs: 0,
+                floodRiskLevel: 'low',
+                populationAffected: 0,
+                affectedArea: 0,
+                coordinates: fallbackCoordinates,
+            };
+            regionDataMap.set(lowerRegionName, regionEntry);
         }
 
         // --- Aggregate Reservoir Data to IMDRegionData fields ---
-        // Take max percentageFull and sum inflowCusecs for a given district/region
-        const percentageFull = res.percentage_full || 0;
+        // Sanitize percentage_full: ensure it's a number and within a reasonable range (0-100)
+        const rawPercentageFull = parseFloat(res.percentage_full as any); // Cast to any to handle potential string numbers
+        const percentageFull = isNaN(rawPercentageFull) ? 0 : Math.min(100, Math.max(0, rawPercentageFull));
+        
         const inflowCusecs = res.inflow_cusecs || 0;
-        const outflowCusecs = res.outflow_cusecs || 0;
+        const outflowCusecs = res.outflow_cusecs || 0; // Not directly used in IMDRegionData, but good for trend
 
         // DEBUG LOG: Log raw values from each reservoir record
-        console.log(`DEBUG_IMD_RAW: Reservoir=${res.reservoir_name}, District=${res.district}, PercentageFull=${percentageFull}, InflowCusecs=${inflowCusecs}`);
+        console.log(`DEBUG_IMD_RAW: Reservoir=${res.reservoir_name}, District=${res.district}, MappedTo=${regionName}, CleanedPercentageFull=${percentageFull}, InflowCusecs=${inflowCusecs}`);
         
-        // NEW DEBUG LOG: To trace the 'unknown' aggregation issue
+        // NEW DEBUG LOG: To trace the 'unknown' aggregation issue (now less likely to have erroneous data)
         if (lowerRegionName === 'unknown') {
-            console.log(`DEBUG_UNKNOWN_AGG: Reservoir=${res.reservoir_name}, RawPerc=${percentageFull}, RawInflow=${inflowCusecs}, RegionEntryPercBeforeUpdate=${regionEntry.reservoirPercentage}, RegionEntryInflowBeforeUpdate=${regionEntry.inflowCusecs}`);
+            console.log(`DEBUG_UNKNOWN_AGG: Reservoir=${res.reservoir_name}, MappedRegion='${regionName}', RawPerc=${res.percentage_full}, CleanedPerc=${percentageFull}, RawInflow=${res.inflow_cusecs}`);
         }
 
 
@@ -180,16 +197,14 @@ export const imdApiService = {
         regionEntry.inflowCusecs += inflowCusecs; // Sum inflows for the region
 
         // Determine flood risk level based on aggregated percentage full and inflow
-        // Adjusted thresholds for risk levels based on percentage full and inflow
-        let riskLevel: IMDRegionData['floodRiskLevel'] = 'low';
         // **ADJUSTED THRESHOLDS for more sensitive risk detection**
-        // These thresholds were adjusted aggressively in the last response.
-        // We need to see the raw data to confirm if they are appropriate.
-        if (regionEntry.reservoirPercentage >= 80 || regionEntry.inflowCusecs >= 5000) { // Very high
+        // These thresholds are slightly adjusted based on the assumption that even lower values should indicate risk.
+        let riskLevel: IMDRegionData['floodRiskLevel'] = 'low';
+        if (regionEntry.reservoirPercentage >= 75 || regionEntry.inflowCusecs >= 2000) { // Very high
           riskLevel = 'severe';
-        } else if (regionEntry.reservoirPercentage >= 60 || regionEntry.inflowCusecs >= 1000) { // High
+        } else if (regionEntry.reservoirPercentage >= 50 || regionEntry.inflowCusecs >= 500) { // High
           riskLevel = 'high';
-        } else if (regionEntry.reservoirPercentage >= 40 || regionEntry.inflowCusecs >= 200) { // Medium
+        } else if (regionEntry.reservoirPercentage >= 20 || regionEntry.inflowCusecs >= 50) { // Medium
           riskLevel = 'medium';
         }
         // Update risk level if this reservoir's contribution leads to a higher risk
