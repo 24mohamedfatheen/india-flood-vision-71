@@ -4,7 +4,7 @@ import { supabase } from '../integrations/supabase/client'; // Import Supabase c
 import { regions } from '../data/floodData'; // Import regions for mapping (now dynamic)
 import { ReservoirData } from './reservoirDataService'; // Import ReservoirData interface
 
-// Types for IMD API responses (unchanged, but conceptually 'rainfall' is now 'derived_rainfall')
+// Types for IMD API responses (unchanged)
 export type IMDWeatherWarning = {
   type: 'alert' | 'warning' | 'severe' | 'watch';
   issuedBy: string;
@@ -28,10 +28,9 @@ export type IMDRiverData = {
 export type IMDRegionData = {
   state: string;
   district: string;
-  // Renamed from 'rainfall' to be more descriptive of source.
-  // This will be converted to 'currentRainfall' in FloodData.
-  rainfall: number; // This will be derived from reservoir data // NOTE: This was 'reservoirPercentage' and 'inflowCusecs' in my last version
-                                                                // Reverting to 'rainfall' as per user's provided code.
+  // **MODIFIED:** Now directly reflect data from Supabase for aggregation
+  reservoirPercentage: number;
+  inflowCusecs: number;
   floodRiskLevel: 'low' | 'medium' | 'high' | 'severe';
   populationAffected: number;
   affectedArea: number;
@@ -109,7 +108,8 @@ export const imdApiService = {
         regionDataMap.set(region.label.toLowerCase(), {
           state: region.state,
           district: region.label,
-          rainfall: 0, // Default to 0, will be updated
+          reservoirPercentage: 0, // Initialized
+          inflowCusecs: 0,        // Initialized
           floodRiskLevel: 'low', // Default, will be updated
           populationAffected: 0,
           affectedArea: 0,
@@ -137,7 +137,8 @@ export const imdApiService = {
           regionEntry = {
             state: currentRegionState,
             district: currentRegionLabel,
-            rainfall: 0,
+            reservoirPercentage: 0,
+            inflowCusecs: 0,
             floodRiskLevel: 'low',
             populationAffected: 0,
             affectedArea: 0,
@@ -146,39 +147,35 @@ export const imdApiService = {
           regionDataMap.set(currentRegionLabel.toLowerCase(), regionEntry);
         }
 
-        // --- Map Reservoir Data to IMDRegionData fields ---
-        // For 'rainfall', we'll use 'percentage_full' as a proxy for water abundance/flood potential.
-        // Scale it to a plausible rainfall range (e.g., 0-400mm)
+        // --- Aggregate Reservoir Data to IMDRegionData fields ---
+        // Take max percentageFull and sum inflowCusecs for a given district/region
         const percentageFull = res.percentage_full || 0;
         const inflowCusecs = res.inflow_cusecs || 0;
         const outflowCusecs = res.outflow_cusecs || 0;
 
-        // Simple aggregation: take the highest percentage full or inflow for a region for now
-        // Or, if multiple reservoirs, average them or pick the most critical one.
-        // For simplicity, let's just update if the current reservoir indicates a higher "rainfall" proxy
-        const currentRainfallProxy = Math.floor(percentageFull * 3); // Scale 0-100% to 0-300mm
-        if (currentRainfallProxy > regionEntry.rainfall) {
-          regionEntry.rainfall = currentRainfallProxy;
+        if (percentageFull > regionEntry.reservoirPercentage) {
+            regionEntry.reservoirPercentage = percentageFull;
         }
+        regionEntry.inflowCusecs += inflowCusecs; // Sum inflows for the region
 
-        // Determine flood risk level based on percentage full and inflow
+        // Determine flood risk level based on aggregated percentage full and inflow
+        // Adjusted thresholds for risk levels based on percentage full and inflow
         let riskLevel: IMDRegionData['floodRiskLevel'] = 'low';
-        if (percentageFull > 90 || inflowCusecs > 10000) {
+        if (regionEntry.reservoirPercentage >= 95 || regionEntry.inflowCusecs >= 25000) { // Very high
           riskLevel = 'severe';
-        } else if (percentageFull > 80 || inflowCusecs > 5000) {
+        } else if (regionEntry.reservoirPercentage >= 85 || regionEntry.inflowCusecs >= 10000) { // High
           riskLevel = 'high';
-        } else if (percentageFull > 70 || inflowCusecs > 1000) {
+        } else if (regionEntry.reservoirPercentage >= 70 || regionEntry.inflowCusecs >= 2000) { // Medium
           riskLevel = 'medium';
         }
-        // Update risk level if this reservoir indicates a higher risk
+        // Update risk level if this reservoir's contribution leads to a higher risk
         const riskLevelOrder = { 'low': 0, 'medium': 1, 'high': 2, 'severe': 3 };
         if (riskLevelOrder[riskLevel] > riskLevelOrder[regionEntry.floodRiskLevel]) {
           regionEntry.floodRiskLevel = riskLevel;
         }
 
-        // Populate riverData if relevant
+        // Populate riverData if relevant. We'll store the reservoir with max current level.
         if (res.reservoir_name) {
-          // If there's already river data, decide whether to update (e.g., take the highest level)
           if (!regionEntry.riverData || (res.current_level_mcm && res.current_level_mcm > (regionEntry.riverData.currentLevel || 0))) {
             regionEntry.riverData = {
               name: res.reservoir_name,
@@ -203,4 +200,3 @@ export const imdApiService = {
     }
   }
 };
-
