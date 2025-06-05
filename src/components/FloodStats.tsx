@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { CloudRain, MapPin, Earth, Users, Droplet, ExternalLink, AlertTriangle, BarChart3 } from 'lucide-react';
 import { FloodData } from '../data/floodData';
@@ -178,7 +177,7 @@ const FloodStats: React.FC<FloodStatsProps> = ({ floodData }) => {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <p className="data-label">Rainfall</p>
-            <p className="data-value">{floodData.rainfall} mm</p>
+            <p className="data-value">{floodData.currentRainfall} mm</p>
           </div>
           
           {floodData.riverData ? (

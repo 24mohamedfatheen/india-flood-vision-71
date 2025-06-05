@@ -1,4 +1,3 @@
-
 import { getHistoricalRainfallData } from "../data/floodData";
 import { fetchWeatherDataFromIMD, fetchRiverLevelsFromCWC } from "./dataSourcesService";
 
@@ -181,7 +180,8 @@ export async function fetchFloodForecast(params: ForecastParams): Promise<Cursor
     await new Promise(resolve => setTimeout(resolve, 800));
     
     // 1. Get historical rainfall data for this region
-    const historicalData = getHistoricalRainfallData(region);
+    const currentYear = new Date().getFullYear();
+    const historicalData = getHistoricalRainfallData(region, currentYear);
     
     // 2. Fetch current weather data from IMD API (simulated)
     let weatherData = null;

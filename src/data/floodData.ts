@@ -162,7 +162,7 @@ const mapIMDRegionDataToFloodData = (imdData: IMDRegionData[]): FloodData[] => {
       riskLevel: item.floodRiskLevel,
       affectedArea: item.affectedArea,
       populationAffected: item.populationAffected,
-      coordinates: regionCoords, // Use coordinates from parsed CSV if available
+      coordinates: regionCoords as [number, number], // Type assertion to fix coordinates
       timestamp: new Date().toISOString(), // Use current time for consistency
       currentRainfall: item.rainfall, // This is the current/derived rainfall
       historicalRainfallData: historicalDataForChart, // Populate with generated or static historical data
@@ -273,7 +273,7 @@ export const fetchImdData = async (forceRefresh = false): Promise<FloodData[]> =
           riskLevel: 'low' as const, // Default, could be derived from static data if available
           affectedArea: 0,
           populationAffected: 0,
-          coordinates: r.coordinates, // Use coordinates from regions
+          coordinates: r.coordinates as [number, number], // Type assertion to fix coordinates
           timestamp: new Date().toISOString(),
           currentRainfall: Math.floor(currentRainfallValue),
           historicalRainfallData: staticHistorical || [], // Use the full static historical data
@@ -316,7 +316,7 @@ export const fetchImdData = async (forceRefresh = false): Promise<FloodData[]> =
         riskLevel: 'low' as const,
         affectedArea: 0,
         populationAffected: 0,
-        coordinates: r.coordinates,
+        coordinates: r.coordinates as [number, number], // Type assertion to fix coordinates
         timestamp: new Date().toISOString(),
         currentRainfall: Math.floor(currentRainfallValue),
         historicalRainfallData: staticHistorical || [],
