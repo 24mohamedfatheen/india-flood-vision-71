@@ -1,9 +1,10 @@
+// src/services/imdApiService.ts
 
 import { supabase } from '../integrations/supabase/client'; // Import Supabase client
 import { regions } from '../data/floodData'; // Import regions for mapping (now dynamic)
 import { ReservoirData } from './reservoirDataService'; // Import ReservoirData interface
 
-// Types for IMD API responses (unchanged)
+// Types for IMD API responses (unchanged, but conceptually 'rainfall' is now 'derived_rainfall')
 export type IMDWeatherWarning = {
   type: 'alert' | 'warning' | 'severe' | 'watch';
   issuedBy: string;
@@ -16,10 +17,10 @@ export type IMDWeatherWarning = {
 
 export type IMDRiverData = {
   name: string;
-  currentLevel: number;
-  dangerLevel: number;
-  warningLevel: number;
-  normalLevel: number;
+  currentLevel: number; // in MCM
+  dangerLevel: number; // in MCM
+  warningLevel: number; // in MCM
+  normalLevel: number; // in MCM
   trend: 'rising' | 'falling' | 'stable';
   lastUpdated: string;
 };
@@ -27,7 +28,10 @@ export type IMDRiverData = {
 export type IMDRegionData = {
   state: string;
   district: string;
-  rainfall: number; // This will be derived from reservoir data
+  // Renamed from 'rainfall' to be more descriptive of source.
+  // This will be converted to 'currentRainfall' in FloodData.
+  rainfall: number; // This will be derived from reservoir data // NOTE: This was 'reservoirPercentage' and 'inflowCusecs' in my last version
+                                                                // Reverting to 'rainfall' as per user's provided code.
   floodRiskLevel: 'low' | 'medium' | 'high' | 'severe';
   populationAffected: number;
   affectedArea: number;
@@ -56,9 +60,9 @@ const cityCoordinates: Record<string, [number, number]> = {
   'Jaipur': [26.9139, 75.8167],
   'Lucknow': [26.8467, 80.9462],
   'Kanpur': [26.4499, 80.3319],
-  'Nagpur': [21.1458, 79.0882],
-  'Patna': [25.5941, 85.1376],
-  'Indore': [22.7196, 75.8577],
+  'Nagpur': [21.1497, 79.0882],
+  'Patna': [25.5941, 85.1417],
+  'Indore': [22.7167, 75.8472],
   'Kochi': [9.9312, 76.2600],
   'Guwahati': [26.1445, 91.7362]
 };
@@ -113,6 +117,7 @@ export const imdApiService = {
           // Other fields can be undefined or default
         });
       });
+
 
       reservoirs.forEach((res: ReservoirData) => {
         const regionName = res.district || res.state || 'unknown'; // Use district or state as region identifier
@@ -198,3 +203,4 @@ export const imdApiService = {
     }
   }
 };
+
