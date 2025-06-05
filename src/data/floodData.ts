@@ -1,4 +1,3 @@
-
 // src/data/floodData.ts
 
 import { IMDRegionData } from '../services/imdApiService';
@@ -137,8 +136,9 @@ const mapIMDRegionDataToFloodData = (imdData: IMDRegionData[]): FloodData[] => {
       derivedCurrentRainfall = 5;
     }
 
-    // Find coordinates from the dynamically generated regions
+    // Find coordinates from the dynamically generated regions and ensure proper tuple type
     const regionCoords = regions.find(r => r.value === item.district.toLowerCase())?.coordinates;
+    const coordinates: [number, number] = regionCoords ? [regionCoords[0], regionCoords[1]] : [0, 0];
 
     return {
       id: index + 1,
@@ -147,7 +147,7 @@ const mapIMDRegionDataToFloodData = (imdData: IMDRegionData[]): FloodData[] => {
       riskLevel: item.floodRiskLevel,
       affectedArea: 0, // Remain 0 unless directly provided in Supabase
       populationAffected: 0, // Remain 0 unless directly provided in Supabase
-      coordinates: regionCoords ? [regionCoords[0], regionCoords[1]] as [number, number] : [0, 0],
+      coordinates,
       timestamp: new Date().toISOString(),
       currentRainfall: derivedCurrentRainfall,
       historicalRainfallData: [], // Initialize empty, getHistoricalRainfallData will populate
@@ -248,6 +248,8 @@ export const fetchImdData = async (forceRefresh = false): Promise<FloodData[]> =
           }
         }
 
+        const coordinates: [number, number] = [r.coordinates[0], r.coordinates[1]];
+
         return {
           id: regions.indexOf(r) + 1,
           region: r.label,
@@ -255,7 +257,7 @@ export const fetchImdData = async (forceRefresh = false): Promise<FloodData[]> =
           riskLevel: 'low' as const,
           affectedArea: 0, // No dummy data
           populationAffected: 0, // No dummy data
-          coordinates: [r.coordinates[0], r.coordinates[1]] as [number, number],
+          coordinates,
           timestamp: new Date().toISOString(),
           currentRainfall: currentRainfallValue,
           historicalRainfallData: [],
@@ -278,19 +280,22 @@ export const fetchImdData = async (forceRefresh = false): Promise<FloodData[]> =
 
     // Return static data if no cached data available
     console.log('No cached data, returning static data.');
-    const staticFallbackData = regions.map(r => ({
-      id: regions.indexOf(r) + 1,
-      region: r.label,
-      state: r.state,
-      riskLevel: 'low' as const,
-      affectedArea: 0,
-      populationAffected: 0,
-      coordinates: [r.coordinates[0], r.coordinates[1]] as [number, number],
-      timestamp: new Date().toISOString(),
-      currentRainfall: 5, // Fixed minimum
-      historicalRainfallData: [],
-      predictionAccuracy: 70,
-    }));
+    const staticFallbackData = regions.map(r => {
+      const coordinates: [number, number] = [r.coordinates[0], r.coordinates[1]];
+      return {
+        id: regions.indexOf(r) + 1,
+        region: r.label,
+        state: r.state,
+        riskLevel: 'low' as const,
+        affectedArea: 0,
+        populationAffected: 0,
+        coordinates,
+        timestamp: new Date().toISOString(),
+        currentRainfall: 5, // Fixed minimum
+        historicalRainfallData: [],
+        predictionAccuracy: 70,
+      };
+    });
     floodData = staticFallbackData;
     return floodData;
   }
