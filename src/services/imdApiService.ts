@@ -119,23 +119,36 @@ export const imdApiService = {
 
 
       reservoirs.forEach((res: ReservoirData) => {
-        const regionName = res.district || res.state || 'unknown'; // Use district or state as region identifier
+        // More robust region name determination
+        let regionName = 'unknown';
+        if (res.district) {
+            // Try to find a matching region by district label
+            const matchedRegionByDistrict = regions.find(r => r.label.toLowerCase() === res.district.toLowerCase());
+            if (matchedRegionByDistrict) {
+                regionName = matchedRegionByDistrict.label;
+            } else {
+                // If district doesn't match a label, use district itself (and it might still map to unknown later if not in cityCoordinates)
+                regionName = res.district;
+            }
+        } else if (res.state) {
+            // If no district, try to find a matching region by state
+            const matchedRegionByState = regions.find(r => r.state.toLowerCase() === res.state.toLowerCase());
+            if (matchedRegionByState) {
+                regionName = matchedRegionByState.label; // Use the region's label if state matches
+            } else {
+                regionName = res.state; // Use state itself if no region matches
+            }
+        }
+        
         const lowerRegionName = regionName.toLowerCase();
-
-        // Find the corresponding predefined region to get its label
-        const predefinedRegion = regions.find(r =>
-          r.label.toLowerCase() === lowerRegionName || r.state.toLowerCase() === lowerRegionName
-        );
-        const currentRegionLabel = predefinedRegion ? predefinedRegion.label : regionName;
-        const currentRegionState = predefinedRegion ? predefinedRegion.state : getStateForRegion(regionName);
-
+        
         // Get or create IMDRegionData for this region
-        let regionEntry = regionDataMap.get(currentRegionLabel.toLowerCase());
+        let regionEntry = regionDataMap.get(lowerRegionName);
         if (!regionEntry) {
-          const fallbackCoordinates: [number, number] = cityCoordinates[currentRegionLabel] || [res.lat || 0, res.long || 0];
+          const fallbackCoordinates: [number, number] = cityCoordinates[regionName] || [res.lat || 0, res.long || 0];
           regionEntry = {
-            state: currentRegionState,
-            district: currentRegionLabel,
+            state: getStateForRegion(regionName), // Use helper for state
+            district: regionName,
             reservoirPercentage: 0,
             inflowCusecs: 0,
             floodRiskLevel: 'low',
@@ -143,7 +156,7 @@ export const imdApiService = {
             affectedArea: 0,
             coordinates: fallbackCoordinates,
           };
-          regionDataMap.set(currentRegionLabel.toLowerCase(), regionEntry);
+          regionDataMap.set(lowerRegionName, regionEntry);
         }
 
         // --- Aggregate Reservoir Data to IMDRegionData fields ---
@@ -154,6 +167,11 @@ export const imdApiService = {
 
         // DEBUG LOG: Log raw values from each reservoir record
         console.log(`DEBUG_IMD_RAW: Reservoir=${res.reservoir_name}, District=${res.district}, PercentageFull=${percentageFull}, InflowCusecs=${inflowCusecs}`);
+        
+        // NEW DEBUG LOG: To trace the 'unknown' aggregation issue
+        if (lowerRegionName === 'unknown') {
+            console.log(`DEBUG_UNKNOWN_AGG: Reservoir=${res.reservoir_name}, RawPerc=${percentageFull}, RawInflow=${inflowCusecs}, RegionEntryPercBeforeUpdate=${regionEntry.reservoirPercentage}, RegionEntryInflowBeforeUpdate=${regionEntry.inflowCusecs}`);
+        }
 
 
         if (percentageFull > regionEntry.reservoirPercentage) {
@@ -210,4 +228,3 @@ export const imdApiService = {
     }
   }
 };
-
