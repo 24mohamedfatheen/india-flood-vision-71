@@ -28,7 +28,6 @@ export type IMDRiverData = {
 export type IMDRegionData = {
   state: string;
   district: string;
-  // **MODIFIED:** Now directly reflect data from Supabase for aggregation
   reservoirPercentage: number;
   inflowCusecs: number;
   floodRiskLevel: 'low' | 'medium' | 'high' | 'severe';
@@ -153,6 +152,10 @@ export const imdApiService = {
         const inflowCusecs = res.inflow_cusecs || 0;
         const outflowCusecs = res.outflow_cusecs || 0;
 
+        // DEBUG LOG: Log raw values from each reservoir record
+        console.log(`DEBUG_IMD_RAW: Reservoir ${res.reservoir_name} in ${res.district}: percentage_full=${percentageFull}, inflow_cusecs=${inflowCusecs}`);
+
+
         if (percentageFull > regionEntry.reservoirPercentage) {
             regionEntry.reservoirPercentage = percentageFull;
         }
@@ -191,6 +194,10 @@ export const imdApiService = {
       });
 
       const resultData = Array.from(regionDataMap.values());
+      // DEBUG LOG: Log aggregated region data before returning
+      resultData.forEach(item => {
+          console.log(`DEBUG_IMD_AGGREGATED: District=${item.district}, ReservoirPercentage=${item.reservoirPercentage}, InflowCusecs=${item.inflowCusecs}, FloodRiskLevel=${item.floodRiskLevel}`);
+      });
       console.log('Live IMD data fetched and processed successfully:', resultData);
       return resultData;
 
