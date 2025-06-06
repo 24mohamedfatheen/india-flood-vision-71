@@ -34,6 +34,44 @@ export type IMDRegionData = {
   affectedArea: number;
   coordinates: [number, number];
   lastUpdated: string;
+  // Additional properties for compatibility with other components
+  riverData?: {
+    name: string;
+    currentLevel: number;
+    dangerLevel: number;
+    warningLevel: number;
+    normalLevel: number;
+    trend: 'rising' | 'falling' | 'stable';
+    source: {
+      name: string;
+      url: string;
+      type?: string;
+    }
+  };
+  predictedFlood?: {
+    date: string;
+    probabilityPercentage: number;
+    timestamp?: string;
+    predictedEvent?: string;
+    predictedLocation?: string;
+    timeframe?: string;
+    supportingData?: string;
+    expectedRainfall?: number;
+    expectedRiverRise?: number;
+    source?: {
+      name: string;
+      url: string;
+      type?: string;
+    }
+  };
+  activeWarnings?: {
+    type: 'severe' | 'warning' | 'alert' | 'watch';
+    issuedBy: string;
+    issuedAt: string;
+    validUntil: string;
+    message: string;
+    sourceUrl: string;
+  }[];
 };
 
 const SUPABASE_FETCH_LIMIT = 1000;
@@ -150,5 +188,10 @@ export const imdApiService = {
       console.error('CRITICAL ERROR in imdApiService.fetchAggregatedFloodData:', error);
       return [];
     }
+  },
+
+  // Add this method for compatibility with existing code
+  fetchFloodData: async (): Promise<IMDRegionData[]> => {
+    return await imdApiService.fetchAggregatedFloodData();
   },
 };

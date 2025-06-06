@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
@@ -17,6 +16,7 @@ import ChartSection from '../components/ChartSection';
 import PredictionCard from '../components/PredictionCard';
 import HistoricalFloodData from '../components/HistoricalFloodData';
 import CursorAiIndicator from '../components/CursorAiIndicator';
+import { convertIMDRegionDataToFloodData } from '../utils/dataConverter';
 
 const Index = () => {
   // Centralized state management
@@ -142,6 +142,11 @@ const Index = () => {
       d.district === selectedDistrict && d.state === selectedState
     ) || (aggregatedFloodData.length > 0 ? aggregatedFloodData[0] : null);
   }, [selectedDistrict, selectedState, aggregatedFloodData]);
+
+  // Convert to FloodData for components that expect it
+  const displayFloodData = useMemo(() => {
+    return displayRegionData ? convertIMDRegionDataToFloodData(displayRegionData) : null;
+  }, [displayRegionData]);
 
   const totalRegionsWithData = useMemo(() => {
     return aggregatedFloodData.length;
@@ -397,9 +402,9 @@ const Index = () => {
         {/* Main content sections */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           <div className="lg:col-span-2 space-y-6">
-            <FloodStats floodData={displayRegionData} />
+            <FloodStats floodData={displayFloodData} />
             <ChartSection selectedRegion={selectedDistrict || 'mumbai'} />
-            <PredictionCard floodData={displayRegionData} />
+            <PredictionCard floodData={displayFloodData} />
           </div>
           
           <div className="lg:col-span-1">
