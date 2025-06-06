@@ -216,8 +216,10 @@ const FloodMap: React.FC<FloodMapProps> = ({
           <GeoJSON
             key={`geojson-${selectedState}-${selectedDistrict}`}
             data={geoJsonData}
-            pathOptions={getDistrictStyle}
-            onEachFeature={onEachFeature}
+            style={getDistrictStyle}
+            eventHandlers={{
+              add: onEachFeature
+            }}
             ref={geoJsonRef}
           />
         )}
