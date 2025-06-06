@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
@@ -10,7 +11,7 @@ import HistoricalFloodData from '../components/HistoricalFloodData';
 import { getFloodDataForRegion, fetchImdData, floodData } from '../data/floodData';
 import { useReservoirFloodData } from '../hooks/useReservoirFloodData';
 import { useToast } from '../hooks/use-toast';
-import { Clock, RefreshCw, AlertTriangle, LogIn, LogOut, Database } from 'lucide-react';
+import { Clock, RefreshCw, AlertTriangle, LogIn, LogOut, Database, MapPin } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../context/AuthContext';
 import CursorAiIndicator from '../components/CursorAiIndicator';
@@ -46,32 +47,32 @@ const Index = () => {
   const enhancedFloodData = floodDataForRegion ? 
     updateFloodDataWithReservoirs([floodDataForRegion])[0] : null;
 
-  // Handle location data from RegionSelector with reactive updates
-  const handleLocationData = useCallback((data: { coordinates: [number, number], rainfall: any }) => {
+  // Handle location data from RegionSelector with enhanced data structure
+  const handleLocationData = useCallback((data: { 
+    coordinates: [number, number], 
+    rainfall: any, 
+    state: string, 
+    district: string 
+  }) => {
     setLocationData(data);
-    console.log('Location data updated:', data);
+    setSelectedState(data.state);
+    setSelectedDistrict(data.district);
+    console.log('📍 Location data updated:', data);
     
     // Trigger reactive updates for dependent components
     setDataFreshness('fresh');
-    
-    // Update the last update time to reflect new data
     setLastUpdateTime(new Date());
-  }, []);
+    
+    toast({
+      title: "Location Updated",
+      description: `Now showing data for ${data.district}, ${data.state}`,
+      duration: 3000,
+    });
+  }, [toast]);
 
-  // Handle region change and extract state/district info
+  // Handle region change
   const handleRegionChange = useCallback((region: string) => {
     setSelectedRegion(region);
-  }, []);
-
-  // Update state and district from RegionSelector
-  const handleRegionSelectorChange = useCallback((regionData: { 
-    selectedState: string; 
-    selectedDistrict: string; 
-    selectedRegion: string;
-  }) => {
-    setSelectedState(regionData.selectedState);
-    setSelectedDistrict(regionData.selectedDistrict);
-    setSelectedRegion(regionData.selectedRegion);
   }, []);
 
   // Data fetching function with error handling
@@ -108,7 +109,7 @@ const Index = () => {
         });
       }
     } catch (error) {
-      console.error("Error loading data:", error);
+      console.error("❌ Error loading data:", error);
       toast({
         title: forceRefresh ? "Refresh Failed" : "Error Loading Data",
         description: "Could not fetch the latest flood and reservoir data. Please try again.",
@@ -138,8 +139,7 @@ const Index = () => {
   // Reactive updates when location data changes
   useEffect(() => {
     if (locationData) {
-      console.log('Triggering reactive updates for location data:', locationData);
-      // Force re-render of dependent components
+      console.log('🔄 Triggering reactive updates for location data:', locationData);
       setLastUpdateTime(new Date());
     }
   }, [locationData]);
@@ -147,7 +147,7 @@ const Index = () => {
   const handleManualRefresh = async () => {
     if (isRefreshing) return;
     
-    console.log('Manual refresh triggered');
+    console.log('🔄 Manual refresh triggered');
     await loadFloodData(true);
   };
   
@@ -158,7 +158,7 @@ const Index = () => {
     }, 12 * 60 * 60 * 1000);
     
     if (process.env.NODE_ENV === 'development') {
-      console.log('Development mode: adding demo interval');
+      console.log('🔧 Development mode: adding demo interval');
       const demoInterval = setTimeout(() => {
         loadFloodData(true);
       }, 60000);
@@ -238,7 +238,7 @@ const Index = () => {
           </div>
         </div>
         
-        {/* Enhanced Region Selector with location data callback */}
+        {/* Enhanced Region Selector with dynamic data */}
         <RegionSelector 
           selectedRegion={selectedRegion}
           onRegionChange={handleRegionChange}
@@ -270,7 +270,8 @@ const Index = () => {
             )}
             {locationData?.coordinates && (
               <div className="timestamp-badge bg-green-50 text-green-700">
-                <span className="text-xs">📍 Weather: {locationData.coordinates[0].toFixed(2)}, {locationData.coordinates[1].toFixed(2)}</span>
+                <MapPin className="h-3 w-3 mr-1" />
+                <span className="text-xs">{selectedDistrict}, {selectedState}</span>
               </div>
             )}
             <Button 
@@ -331,7 +332,17 @@ const Index = () => {
                 ) : (
                   <div className="bg-white rounded-lg border p-6">
                     <h2 className="text-lg font-semibold mb-2">Location Information</h2>
-                    <p className="text-gray-500">No flood data available for selected region.</p>
+                    {locationData ? (
+                      <div>
+                        <p className="text-gray-700 mb-2">📍 Selected Location:</p>
+                        <p className="font-medium">{selectedDistrict}, {selectedState}</p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          Coordinates: {locationData.coordinates[0].toFixed(4)}, {locationData.coordinates[1].toFixed(4)}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-gray-500">Please select a location to view flood data.</p>
+                    )}
                   </div>
                 )}
                 
@@ -340,7 +351,7 @@ const Index = () => {
                 ) : (
                   <div className="bg-white rounded-lg border p-6">
                     <h2 className="text-lg font-semibold mb-2">Current Conditions</h2>
-                    <p className="text-gray-500">Loading current conditions...</p>
+                    <p className="text-gray-500">Select a location to view current flood conditions.</p>
                   </div>
                 )}
               </div>
@@ -381,7 +392,18 @@ const Index = () => {
                       ✓ Weather Data Loaded
                     </p>
                     <p className="text-xs text-green-600">
-                      Historical and forecast rainfall data available
+                      Historical and forecast rainfall data for {selectedDistrict}
+                    </p>
+                  </div>
+                )}
+                
+                {locationData && (
+                  <div className="p-4 bg-purple-50 rounded-lg">
+                    <p className="text-sm text-purple-700 font-medium">
+                      ✓ Location Resolved
+                    </p>
+                    <p className="text-xs text-purple-600">
+                      {selectedDistrict}, {selectedState} coordinates resolved dynamically
                     </p>
                   </div>
                 )}
@@ -436,22 +458,25 @@ const Index = () => {
             <a href="https://ndma.gov.in/" target="_blank" rel="noopener noreferrer" className="data-source-badge">
               Disaster Management
             </a>
-            <a href="https://chennaimetrowater.tn.gov.in/" target="_blank" rel="noopener noreferrer" className="data-source-badge">
-              Chennai Water Supply
+            <a href="https://openstreetmap.org/" target="_blank" rel="noopener noreferrer" className="data-source-badge">
+              OpenStreetMap Geocoding
+            </a>
+            <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" className="data-source-badge">
+              Open-Meteo Weather API
             </a>
             <a href="https://cursor.ai/" target="_blank" rel="noopener noreferrer" className="data-source-badge bg-indigo-100">
               Cursor AI
             </a>
           </div>
           <p className="text-xs text-muted-foreground">
-            All flood predictions and warnings are based on official meteorological and hydrological data, enhanced with Cursor AI technology. Updates occur every 12 hours.
+            All flood predictions and warnings are based on official meteorological and hydrological data, enhanced with dynamic location resolution and real-time weather APIs.
           </p>
         </div>
         
         <footer className="text-center text-sm text-muted-foreground py-4 border-t mt-6">
           <p>India Flood Vision Dashboard - Data last updated: {lastUpdateTime.toLocaleString()}</p>
           <p className="text-xs mt-1">Next scheduled update: {nextUpdateTime.toLocaleString()}</p>
-          <p className="text-xs mt-1">Powered by Cursor AI technology</p>
+          <p className="text-xs mt-1">Powered by dynamic location resolution and real-time APIs</p>
         </footer>
       </div>
     </div>

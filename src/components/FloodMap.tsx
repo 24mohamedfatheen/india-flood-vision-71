@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
 import L from 'leaflet';
@@ -20,10 +21,35 @@ const getColor = (riskLevel: number): string => {
   }
 };
 
-// Normalize district names for comparison
+// Enhanced normalize function for better district name matching
 const normalizeDistrictName = (name: string): string => {
   if (!name) return '';
-  return name.toLowerCase().trim().replace(/\s+/g, ' ');
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/[^\w\s]/g, '') // Remove special characters
+    .replace(/\b(district|dist|city|municipal|corporation)\b/g, '') // Remove common suffixes
+    .trim();
+};
+
+// Enhanced matching function
+const isDistrictMatch = (geoJsonName: string, targetName: string): boolean => {
+  const normalized1 = normalizeDistrictName(geoJsonName);
+  const normalized2 = normalizeDistrictName(targetName);
+  
+  // Exact match
+  if (normalized1 === normalized2) return true;
+  
+  // Partial match (either contains the other)
+  if (normalized1.includes(normalized2) || normalized2.includes(normalized1)) return true;
+  
+  // Word-based matching for compound names
+  const words1 = normalized1.split(' ').filter(w => w.length > 2);
+  const words2 = normalized2.split(' ').filter(w => w.length > 2);
+  
+  // Check if any significant words match
+  return words1.some(word1 => words2.some(word2 => word1.includes(word2) || word2.includes(word1)));
 };
 
 const FloodMap: React.FC<FloodMapProps> = ({ 
@@ -35,7 +61,9 @@ const FloodMap: React.FC<FloodMapProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [matchedDistricts, setMatchedDistricts] = useState<Set<string>>(new Set());
+  const [selectedDistrictFound, setSelectedDistrictFound] = useState<boolean>(false);
   const geoJsonLayerRef = useRef<L.GeoJSON | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
 
   // Fetch GeoJSON data for Indian districts
   useEffect(() => {
@@ -43,7 +71,7 @@ const FloodMap: React.FC<FloodMapProps> = ({
       setLoading(true);
       setError(null);
       try {
-        console.log('Fetching Indian districts GeoJSON...');
+        console.log('🗺️ Fetching Indian districts GeoJSON...');
         const response = await fetch('https://raw.githubusercontent.com/datameet/maps/master/Districts/india_district.geojson');
         
         if (!response.ok) {
@@ -51,7 +79,7 @@ const FloodMap: React.FC<FloodMapProps> = ({
         }
         
         const data = await response.json();
-        console.log('GeoJSON loaded successfully:', data);
+        console.log('✅ GeoJSON loaded successfully:', data);
         
         // Create a set of normalized district names from GeoJSON for matching
         const geoJsonDistricts = new Set<string>();
@@ -69,9 +97,9 @@ const FloodMap: React.FC<FloodMapProps> = ({
         setMatchedDistricts(geoJsonDistricts);
         setGeoJsonData(data);
         
-        console.log(`GeoJSON contains ${geoJsonDistricts.size} districts for matching`);
+        console.log(`📊 GeoJSON contains ${geoJsonDistricts.size} districts for matching`);
       } catch (error) {
-        console.error('Error fetching GeoJSON:', error);
+        console.error('❌ Error fetching GeoJSON:', error);
         setError('Could not load map data. Please try again.');
       } finally {
         setLoading(false);
@@ -81,48 +109,51 @@ const FloodMap: React.FC<FloodMapProps> = ({
     fetchGeoJson();
   }, []);
 
-  // Style function for GeoJSON features
+  // Check if selected district exists in GeoJSON when selection changes
+  useEffect(() => {
+    if (selectedDistrict && geoJsonData) {
+      let found = false;
+      
+      geoJsonData.features.forEach((feature: any) => {
+        if (feature.properties.NAME_2) {
+          if (isDistrictMatch(feature.properties.NAME_2, selectedDistrict)) {
+            found = true;
+          }
+        }
+      });
+      
+      setSelectedDistrictFound(found);
+      console.log(`🔍 District "${selectedDistrict}" ${found ? 'found' : 'not found'} in GeoJSON`);
+    }
+  }, [selectedDistrict, geoJsonData]);
+
+  // Style function for GeoJSON features with improved highlighting
   const styleFeature = (feature: any) => {
     const riskLevel = feature?.properties?.floodRiskLevel || 0;
+    let isSelected = false;
+    
+    // Check if this feature matches the selected district
+    if (selectedDistrict && selectedState) {
+      const featureDistrict = feature.properties?.NAME_2 || '';
+      const featureState = feature.properties?.NAME_1 || '';
+      
+      const isDistrictMatch = featureDistrict && isDistrictMatch(featureDistrict, selectedDistrict);
+      const isStateMatch = featureState && normalizeDistrictName(featureState).includes(normalizeDistrictName(selectedState));
+      
+      isSelected = isDistrictMatch && isStateMatch;
+    }
+    
     return {
       fillColor: getColor(riskLevel),
-      weight: 1,
+      weight: isSelected ? 4 : 1,
       opacity: 1,
-      color: 'white',
+      color: isSelected ? '#000' : 'white',
       dashArray: '',
-      fillOpacity: 0.6
+      fillOpacity: isSelected ? 0.9 : 0.6
     };
   };
 
-  // Highlight feature on mouse over
-  const highlightFeature = (e: L.LeafletMouseEvent) => {
-    const layer = e.target;
-    layer.setStyle({
-      weight: 3,
-      color: '#666',
-      dashArray: '',
-      fillOpacity: 0.8
-    });
-    layer.bringToFront();
-  };
-
-  // Reset highlight on mouse out
-  const resetHighlight = (e: L.LeafletMouseEvent) => {
-    if (geoJsonLayerRef.current) {
-      geoJsonLayerRef.current.resetStyle(e.target);
-    }
-  };
-
-  // Zoom to feature on click
-  const zoomToFeature = (e: L.LeafletMouseEvent) => {
-    const layer = e.target;
-    const map = layer._map;
-    if (map) {
-      map.fitBounds(layer.getBounds());
-    }
-  };
-
-  // Event handlers for each feature
+  // Event handlers for map features
   const onEachFeature = (feature: any, layer: L.Layer) => {
     const props = feature.properties;
     
@@ -133,55 +164,72 @@ const FloodMap: React.FC<FloodMapProps> = ({
       const districtName = props.NAME_2 || 'Unknown District';
       const stateName = props.NAME_1 || 'Unknown State';
       
-      // Check if this district matches our normalized dataset
-      const normalizedDistrict = normalizeDistrictName(districtName);
-      const isMatched = matchedDistricts.has(normalizedDistrict);
+      // Check if this district matches our selection
+      const isSelected = selectedDistrict && selectedState && 
+                        isDistrictMatch(districtName, selectedDistrict) &&
+                        normalizeDistrictName(stateName).includes(normalizeDistrictName(selectedState));
       
       layer.bindPopup(`
         <div>
           <h3><strong>${districtName}</strong></h3>
           <p>State: ${stateName}</p>
           <p>Flood Risk: <span style="color: ${getColor(riskLevel)}"><strong>${riskText}</strong></span></p>
-          ${!isMatched ? '<p style="color: #f59e0b; font-size: 12px;">⚠️ Limited data available</p>' : ''}
+          ${isSelected ? '<p style="color: #059669; font-size: 12px;">📍 Currently Selected</p>' : ''}
         </div>
       `);
     }
 
-    // Add event listeners
+    // Add event listeners for interactivity
     layer.on({
-      mouseover: highlightFeature,
-      mouseout: resetHighlight,
-      click: zoomToFeature
+      mouseover: (e: L.LeafletMouseEvent) => {
+        const layer = e.target;
+        layer.setStyle({
+          weight: 3,
+          color: '#666',
+          dashArray: '',
+          fillOpacity: 0.8
+        });
+        layer.bringToFront();
+      },
+      mouseout: (e: L.LeafletMouseEvent) => {
+        if (geoJsonLayerRef.current) {
+          geoJsonLayerRef.current.resetStyle(e.target);
+        }
+      },
+      click: (e: L.LeafletMouseEvent) => {
+        const layer = e.target;
+        if (mapRef.current) {
+          mapRef.current.fitBounds(layer.getBounds());
+        }
+      }
     });
+  };
 
-    // Highlight selected district with improved matching
-    if (selectedDistrict && selectedState) {
-      const featureDistrict = normalizeDistrictName(props?.NAME_2 || '');
-      const featureState = normalizeDistrictName(props?.NAME_1 || '');
-      const targetDistrict = normalizeDistrictName(selectedDistrict);
-      const targetState = normalizeDistrictName(selectedState);
+  // Zoom to selected district when selection changes
+  useEffect(() => {
+    if (selectedDistrict && selectedState && geoJsonData && geoJsonLayerRef.current && mapRef.current) {
+      let targetLayer: L.Layer | null = null;
       
-      const isDistrictMatch = featureDistrict.includes(targetDistrict) || targetDistrict.includes(featureDistrict);
-      const isStateMatch = featureState.includes(targetState) || targetState.includes(featureState);
-      
-      if (isDistrictMatch && isStateMatch) {
-        setTimeout(() => {
-          layer.setStyle({
-            weight: 4,
-            color: '#000',
-            fillOpacity: 0.9
-          });
-          layer.bringToFront();
+      geoJsonLayerRef.current.eachLayer((layer: L.Layer) => {
+        const feature = (layer as any).feature;
+        if (feature?.properties?.NAME_2 && feature?.properties?.NAME_1) {
+          const isDistrictMatch = isDistrictMatch(feature.properties.NAME_2, selectedDistrict);
+          const isStateMatch = normalizeDistrictName(feature.properties.NAME_1).includes(normalizeDistrictName(selectedState));
           
-          // Zoom to the selected district
-          const map = (layer as any)._map;
-          if (map) {
-            map.fitBounds((layer as any).getBounds());
+          if (isDistrictMatch && isStateMatch) {
+            targetLayer = layer;
           }
-        }, 100);
+        }
+      });
+      
+      if (targetLayer) {
+        setTimeout(() => {
+          mapRef.current?.fitBounds((targetLayer as any).getBounds());
+          console.log(`🎯 Zoomed to selected district: ${selectedDistrict}, ${selectedState}`);
+        }, 500);
       }
     }
-  };
+  }, [selectedDistrict, selectedState, geoJsonData]);
 
   if (loading) {
     return (
@@ -207,41 +255,26 @@ const FloodMap: React.FC<FloodMapProps> = ({
   }
 
   return (
-    <div className={`w-full h-[400px] rounded-lg overflow-hidden ${className}`}>
+    <div className={`w-full h-[400px] rounded-lg overflow-hidden relative ${className}`}>
       <MapContainer
-        {...{
-          center: [20.5937, 78.9629] as [number, number],
-          zoom: 5,
-          style: { height: '100%', width: '100%' },
-          scrollWheelZoom: true
-        }}
+        center={[20.5937, 78.9629] as L.LatLngExpression}
+        zoom={5}
+        style={{ height: '100%', width: '100%' }}
+        scrollWheelZoom={true}
+        ref={mapRef}
       >
         <TileLayer
-          {...{
-            url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          }}
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
         
         {geoJsonData && (
           <GeoJSON
-            key="indian-districts"
+            key={`geojson-${selectedDistrict}-${selectedState}`}
             data={geoJsonData}
             pathOptions={styleFeature}
-            eventHandlers={{
-              add: (e) => {
-                const layer = e.target;
-                geoJsonLayerRef.current = layer;
-                
-                // Apply onEachFeature to all features
-                layer.eachLayer((featureLayer: L.Layer) => {
-                  const feature = (featureLayer as any).feature;
-                  if (feature) {
-                    onEachFeature(feature, featureLayer);
-                  }
-                });
-              }
-            }}
+            onEachFeature={onEachFeature}
+            ref={geoJsonLayerRef}
           />
         )}
       </MapContainer>
@@ -271,15 +304,18 @@ const FloodMap: React.FC<FloodMapProps> = ({
           <div className="mt-2 pt-2 border-t border-gray-200">
             <p className="text-xs text-gray-600">Selected:</p>
             <p className="text-xs font-medium">{selectedDistrict}, {selectedState}</p>
+            <p className="text-xs text-gray-500">
+              {selectedDistrictFound ? '✅ Found in map' : '⚠️ Not found in map data'}
+            </p>
           </div>
         )}
       </div>
       
-      {/* Fallback UI for unmatched districts */}
-      {selectedDistrict && selectedState && (
+      {/* District not found warning */}
+      {selectedDistrict && selectedState && !selectedDistrictFound && (
         <div className="absolute top-4 left-4 bg-yellow-50 border border-yellow-200 p-2 rounded-lg z-10 max-w-sm">
           <p className="text-xs text-yellow-800">
-            <strong>Note:</strong> If your selected district isn't highlighted, it might have limited flood data available in our current dataset.
+            <strong>District not found:</strong> {selectedDistrict} could not be located in the map data. This may be due to different naming conventions.
           </p>
         </div>
       )}

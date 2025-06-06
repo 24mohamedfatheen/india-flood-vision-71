@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { MapPin, Loader2 } from 'lucide-react';
-import { fetchStatesFromReservoirs, fetchDistrictsForState, getDistrictCoordinates, fetchRainfallData } from '../services/imdApiService';
+import { MapPin, Loader2, AlertCircle } from 'lucide-react';
+import { fetchRainfallData } from '../services/imdApiService';
 import {
   Select,
   SelectContent,
@@ -10,12 +10,18 @@ import {
   SelectValue,
 } from "./ui/select";
 import { useToast } from "../hooks/use-toast";
-import { supabase } from '../integrations/supabase/client';
+import { 
+  resolveAllReservoirLocations, 
+  getStatesFromResolvedLocations, 
+  getDistrictsForState, 
+  getCoordinatesForLocation,
+  ResolvedLocation 
+} from '../services/geocodingService';
 
 interface RegionSelectorProps {
   selectedRegion: string;
   onRegionChange: (value: string) => void;
-  onLocationData?: (data: { coordinates: [number, number], rainfall: any }) => void;
+  onLocationData?: (data: { coordinates: [number, number], rainfall: any, state: string, district: string }) => void;
 }
 
 const RegionSelector: React.FC<RegionSelectorProps> = ({ 
@@ -27,145 +33,94 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
   const [selectedDistrict, setSelectedDistrict] = useState<string>("");
   const [availableStates, setAvailableStates] = useState<string[]>([]);
   const [availableDistricts, setAvailableDistricts] = useState<string[]>([]);
-  const [loadingStates, setLoadingStates] = useState<boolean>(true);
+  const [resolvedLocations, setResolvedLocations] = useState<ResolvedLocation[]>([]);
+  const [loadingLocations, setLoadingLocations] = useState<boolean>(true);
   const [loadingDistricts, setLoadingDistricts] = useState<boolean>(false);
   const [loadingRainfall, setLoadingRainfall] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [resolutionProgress, setResolutionProgress] = useState<string>('');
   const { toast } = useToast();
   
-  // Load states on component mount with improved null filtering
+  // Load and resolve all reservoir locations on component mount
   useEffect(() => {
-    const loadStates = async () => {
-      setLoadingStates(true);
+    const loadResolvedLocations = async () => {
+      setLoadingLocations(true);
       setErrorMessage(null);
+      setResolutionProgress('Fetching reservoir data from Supabase...');
+      
       try {
-        console.log('Fetching states from Supabase...');
-        const { data, error } = await supabase
-          .from('indian_reservoir_levels')
-          .select('state')
-          .not('state', 'is', null)
-          .neq('state', '')
-          .order('state');
+        console.log('🚀 Starting location resolution process...');
+        const locations = await resolveAllReservoirLocations();
         
-        console.log('Supabase response:', data, error);
-        
-        if (error) {
-          throw new Error(error.message);
+        if (locations.length === 0) {
+          setErrorMessage("No reservoir locations could be resolved. Please check your internet connection.");
+          setResolutionProgress('Failed to resolve locations');
+          return;
         }
         
-        if (data && data.length > 0) {
-          // Enhanced filtering to exclude null, empty, and whitespace-only values
-          const uniqueStates = [...new Set(
-            data
-              .map((row) => row.state)
-              .filter((state): state is string => 
-                state !== null && 
-                state !== undefined && 
-                typeof state === 'string' && 
-                state.trim().length > 0
-              )
-          )].sort();
-          
-          console.log('Filtered unique states:', uniqueStates);
-          setAvailableStates(uniqueStates);
-          
-          if (uniqueStates.length === 0) {
-            setErrorMessage("No valid states found in database");
-          }
-        } else {
-          setErrorMessage("No states found in database");
-        }
+        setResolvedLocations(locations);
+        const states = getStatesFromResolvedLocations(locations);
+        setAvailableStates(states);
+        setResolutionProgress(`Successfully resolved ${locations.length} reservoir locations`);
+        
+        console.log(`✅ Loaded ${locations.length} resolved locations across ${states.length} states`);
+        
+        toast({
+          title: "Location Data Loaded",
+          description: `Successfully resolved ${locations.length} reservoir locations across ${states.length} states`,
+          duration: 5000,
+        });
       } catch (error) {
-        console.error('Error loading states:', error);
-        setErrorMessage("Could not fetch states. Please try again.");
+        console.error('❌ Error loading resolved locations:', error);
+        setErrorMessage("Failed to load reservoir location data. Please try refreshing the page.");
+        setResolutionProgress('Error resolving locations');
         toast({
           title: "Error",
-          description: "Failed to load states from database",
+          description: "Failed to load reservoir location data",
           variant: "destructive"
         });
       } finally {
-        setLoadingStates(false);
+        setLoadingLocations(false);
       }
     };
     
-    loadStates();
+    loadResolvedLocations();
   }, [toast]);
 
-  // Load districts when state changes with improved filtering and cascading logic
+  // Load districts when state changes
   useEffect(() => {
-    if (selectedState && selectedState.trim().length > 0) {
-      const loadDistricts = async () => {
-        setLoadingDistricts(true);
-        setErrorMessage(null);
-        try {
-          console.log('Fetching districts for state:', selectedState);
-          const { data, error } = await supabase
-            .from('indian_reservoir_levels')
-            .select('district')
-            .eq('state', selectedState)
-            .not('district', 'is', null)
-            .neq('district', '')
-            .order('district');
-          
-          console.log('Districts response:', data, error);
-          
-          if (error) {
-            throw new Error(error.message);
-          }
-          
-          if (data && data.length > 0) {
-            // Enhanced filtering to exclude null, empty, and whitespace-only values
-            const uniqueDistricts = [...new Set(
-              data
-                .map((row) => row.district)
-                .filter((district): district is string => 
-                  district !== null && 
-                  district !== undefined && 
-                  typeof district === 'string' && 
-                  district.trim().length > 0
-                )
-            )].sort();
-            
-            console.log('Filtered unique districts:', uniqueDistricts);
-            setAvailableDistricts(uniqueDistricts);
-            
-            if (uniqueDistricts.length === 0) {
-              setErrorMessage(`No valid districts found for ${selectedState}`);
-            }
-          } else {
-            setAvailableDistricts([]);
-            setErrorMessage(`No districts found for ${selectedState}`);
-          }
-          
-          // Reset district selection when state changes (cascading logic)
-          setSelectedDistrict("");
-        } catch (error) {
-          console.error('Error loading districts:', error);
-          setErrorMessage("Could not fetch districts. Please try again.");
-          toast({
-            title: "Error",
-            description: "Failed to load districts for selected state",
-            variant: "destructive"
-          });
-        } finally {
-          setLoadingDistricts(false);
-        }
-      };
+    if (selectedState && resolvedLocations.length > 0) {
+      setLoadingDistricts(true);
+      setErrorMessage(null);
       
-      loadDistricts();
+      try {
+        const districts = getDistrictsForState(resolvedLocations, selectedState);
+        setAvailableDistricts(districts);
+        setSelectedDistrict(""); // Reset district selection
+        
+        if (districts.length === 0) {
+          setErrorMessage(`No districts found for ${selectedState} with resolved reservoir data`);
+        }
+        
+        console.log(`📍 Found ${districts.length} districts in ${selectedState}`);
+      } catch (error) {
+        console.error('❌ Error loading districts:', error);
+        setErrorMessage("Failed to load districts for selected state");
+      } finally {
+        setLoadingDistricts(false);
+      }
     } else {
-      // Clear districts when no state is selected
       setAvailableDistricts([]);
       setSelectedDistrict("");
     }
-  }, [selectedState, toast]);
+  }, [selectedState, resolvedLocations]);
 
-  // Handle state selection with proper cascading
+  // Handle state selection
   const handleStateChange = (value: string) => {
     console.log('State selected:', value);
     setSelectedState(value);
-    setSelectedDistrict(""); // Reset district when state changes
-    setAvailableDistricts([]); // Clear districts list
+    setSelectedDistrict("");
+    setAvailableDistricts([]);
   };
   
   // Handle district selection and fetch additional data
@@ -173,15 +128,17 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
     setSelectedDistrict(value);
     console.log('District selected:', value);
     
-    if (selectedState && value && selectedState.trim().length > 0 && value.trim().length > 0) {
+    if (selectedState && value && resolvedLocations.length > 0) {
       setLoadingRainfall(true);
       setErrorMessage(null);
       
       try {
-        // Get coordinates for the district
-        const coordinates = await getDistrictCoordinates(selectedState, value);
+        // Get coordinates for the selected district
+        const coordinates = getCoordinatesForLocation(resolvedLocations, selectedState, value);
         
         if (coordinates) {
+          console.log(`📍 Found coordinates for ${value}, ${selectedState}:`, coordinates);
+          
           // Fetch rainfall data for the coordinates
           const rainfallData = await fetchRainfallData(coordinates[0], coordinates[1]);
           
@@ -189,20 +146,23 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
           if (onLocationData) {
             onLocationData({
               coordinates,
-              rainfall: rainfallData
+              rainfall: rainfallData,
+              state: selectedState,
+              district: value
             });
           }
           
-          // Update selected region for compatibility with existing system
+          // Update selected region for compatibility
           const regionKey = value.toLowerCase().replace(/\s+/g, '');
           onRegionChange(regionKey);
           
           toast({
             title: "Location Selected",
-            description: `${value}, ${selectedState} - Weather data loaded`,
+            description: `${value}, ${selectedState} - Weather data loaded successfully`,
             duration: 3000
           });
         } else {
+          setErrorMessage(`Could not find coordinates for ${value}, ${selectedState}`);
           toast({
             title: "Warning",
             description: "Could not find coordinates for selected district",
@@ -210,8 +170,8 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
           });
         }
       } catch (error) {
-        console.error('Error processing district selection:', error);
-        setErrorMessage("Could not load weather data. Please try again.");
+        console.error('❌ Error processing district selection:', error);
+        setErrorMessage("Could not load weather data for selected location");
         toast({
           title: "Error",
           description: "Failed to load weather data for selected location",
@@ -236,9 +196,29 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
         )}
       </div>
       
+      {/* Loading Status */}
+      {loadingLocations && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center">
+            <Loader2 className="h-4 w-4 animate-spin mr-2 text-blue-600" />
+            <div>
+              <p className="text-sm font-medium text-blue-900">Resolving Reservoir Locations</p>
+              <p className="text-xs text-blue-700">{resolutionProgress}</p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Error Message */}
       {errorMessage && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-800">{errorMessage}</p>
+          <div className="flex items-start">
+            <AlertCircle className="h-4 w-4 text-red-600 mr-2 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-red-800">Error</p>
+              <p className="text-xs text-red-700">{errorMessage}</p>
+            </div>
+          </div>
         </div>
       )}
       
@@ -246,11 +226,19 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
         {/* State Selection */}
         <div>
           <label htmlFor="state-select" className="block text-sm font-medium mb-2 text-muted-foreground">
-            Select a state in India:
+            Select a state:
           </label>
-          <Select value={selectedState} onValueChange={handleStateChange} disabled={loadingStates}>
+          <Select 
+            value={selectedState} 
+            onValueChange={handleStateChange} 
+            disabled={loadingLocations || availableStates.length === 0}
+          >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder={loadingStates ? "Loading states..." : "Select a state"} />
+              <SelectValue placeholder={
+                loadingLocations ? "Resolving locations..." : 
+                availableStates.length === 0 ? "No states available" :
+                "Select a state"
+              } />
             </SelectTrigger>
             <SelectContent className="bg-white border border-gray-200 shadow-lg z-50">
               {availableStates.map((state) => (
@@ -261,7 +249,7 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
             </SelectContent>
           </Select>
           {availableStates.length > 0 && (
-            <p className="text-xs text-gray-500 mt-1">{availableStates.length} states available</p>
+            <p className="text-xs text-gray-500 mt-1">{availableStates.length} states with reservoir data</p>
           )}
         </div>
         
@@ -306,7 +294,7 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
                     Selected: {selectedDistrict}, {selectedState}
                   </p>
                   <p className="text-xs text-blue-700 mt-1">
-                    Real-time reservoir and weather data will be loaded for this location
+                    Live reservoir and weather data loaded for this location
                   </p>
                 </div>
                 {loadingRainfall && (
@@ -316,10 +304,10 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
             </div>
           )}
           
-          {selectedState && !selectedDistrict && availableDistricts.length === 0 && !loadingDistricts && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-              <p className="text-sm text-yellow-800">
-                No districts found for {selectedState}. This state may have limited data in our current dataset.
+          {!loadingLocations && resolvedLocations.length > 0 && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-2">
+              <p className="text-sm text-green-800">
+                ✅ Successfully loaded {resolvedLocations.length} reservoir locations across {availableStates.length} states
               </p>
             </div>
           )}
