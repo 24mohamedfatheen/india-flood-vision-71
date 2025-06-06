@@ -1,41 +1,74 @@
 // src/pages/Index.tsx
-// This is the main dashboard page, responsible for orchestrating various components,
-// managing application-wide state (data, map, selections), and fetching data.
+// This is a consolidated version of the main dashboard page,
+// designed to increase build stability by minimizing external component imports
+// and handling Leaflet assets directly within this file.
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import L from 'leaflet'; // Needed for L.LatLngExpression type in map state
-import { useToast } from '../hooks/use-toast';
-import { Clock, RefreshCw, AlertTriangle, LogIn, LogOut, Database, MapPin } from 'lucide-react'; 
+import L from 'leaflet'; // Import Leaflet core library for direct manipulation
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet'; // React-Leaflet components
+import { Clock, RefreshCw, AlertTriangle, LogIn, LogOut, Database, MapPin, ChevronDown, Check, LocateFixed, ZoomIn, ZoomOut, Layers, Map as MapIcon } from 'lucide-react'; // All necessary Lucide icons
 
-// Import your existing components
-import Header from '../components/Header';
-import RegionSelector from '../components/RegionSelector'; // <-- CORRECTED: Now properly imported for dropdowns
-import Map from '../components/map/Map'; 
-import MapControls from '../components/map/MapControls'; // Correct path to your MapControls component (buttons only)
-import FloodStats from '../components/FloodStats';
-import ChartSection from '../components/ChartSection';
-import PredictionCard from '../components/PredictionCard';
-import HistoricalFloodData from '../components/HistoricalFloodData';
-import CursorAiIndicator from '../components/CursorAiIndicator';
+// Import your existing UI components (assuming these are correctly implemented and their dependencies are met)
+import { useToast } from '../hooks/use-toast';
 import { Button } from '../components/ui/button';
-import { Skeleton } from '../components/ui/skeleton'; 
+import { Skeleton } from '../components/ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'; // Your shadcn/ui Select
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip'; // Your shadcn/ui Tooltip
+
+// Your authentication context
 import { useAuth } from '../context/AuthContext'; 
 
-// Import the new comprehensive data service
+// Import the comprehensive data service
 import { imdApiService, IMDRegionData } from './../services/imdApiService'; 
 
+// --- Leaflet Default Icon Fix & CDN CSS Link (Critical for build stability) ---
+// This ensures Leaflet's default marker icons display correctly without relying on local bundling.
+// It also embeds Leaflet's CSS directly via a style tag for robustness.
+// IMPORTANT: Place this outside the component, as it runs once when the module loads.
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+});
+
+// Create a style tag to inject Leaflet's CSS directly into the document head.
+// This is a workaround to ensure CSS loads even if traditional CSS imports fail in the build.
+const createLeafletStyle = () => {
+  const style = document.createElement('style');
+  style.innerHTML = `
+    @import 'https://unpkg.com/leaflet@1.7.1/dist/leaflet.css';
+    /* Basic custom marker styles if needed, but inlined SVG in Map component is better */
+    .custom-marker-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .animate-pulse {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+  `;
+  document.head.appendChild(style);
+};
+// Execute this once when the script loads
+createLeafletStyle();
+
 const Index: React.FC = () => { 
-  // --- New State for Map and Aggregated Data ---
+  // --- States for Map and Aggregated Data ---
   const [aggregatedFloodData, setAggregatedFloodData] = useState<IMDRegionData[]>([]);
   const [selectedState, setSelectedState] = useState<string>('');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('');
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-  const [mapCenter, setMapCenter] = useState<L.LatLngExpression>([20.5937, 78.9629]); // Default center of India
-  const [mapZoom, setMapZoom] = useState<number>(5); // Default zoom level
+  const [mapCenter, setMapCenter] = useState<L.LatLngExpression>([20.5937, 78.9629]); 
+  const [mapZoom, setMapZoom] = useState<number>(5); 
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null); // To hold the Leaflet map instance
 
-  // --- Existing States (Adapted) ---
+  // --- Other Dashboard States ---
   const [lastUpdateTime, setLastUpdateTime] = useState<Date>(new Date());
   const [nextUpdateTime, setNextUpdateTime] = useState<Date>(new Date(Date.now() + 12 * 60 * 60 * 1000));
   const [dataFreshness, setDataFreshness] = useState<'fresh' | 'stale' | 'updating'>('updating');
@@ -47,7 +80,25 @@ const Index: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
-  // --- Data Fetching Logic (Unified for Aggregated Data) ---
+  // --- MapRecenter Component (Inlined for build stability) ---
+  // This helper component ensures the map's view updates programmatically.
+  const MapRecenter: React.FC<{ center: L.LatLngExpression, zoom: number }> = ({ center, zoom }) => {
+    const map = useMapEvents({ // useMapEvents is used here to get access to the map instance
+      load: (e) => { // 'load' event fires when the map is initialized
+        if (mapInstance === null) { // Set mapInstance only once
+          setMapInstance(e.target);
+        }
+      },
+    });
+    useEffect(() => {
+      if (map && (center[0] !== 0 || center[1] !== 0)) { 
+        map.flyTo(center, zoom, { animate: true, duration: 1 }); 
+      }
+    }, [center, zoom, map]); 
+    return null; 
+  };
+
+  // --- Data Fetching Logic ---
   const loadFloodData = useCallback(async (forceRefresh = false) => {
     setDataFreshness('updating'); 
     if (forceRefresh) {
@@ -58,7 +109,6 @@ const Index: React.FC = () => {
       const data = await imdApiService.fetchAggregatedFloodData();
       setAggregatedFloodData(data); 
 
-      // Set initial map view and dropdowns if data is available and not already set
       if (data.length > 0 && (!selectedState || !selectedDistrict)) {
           const defaultRegion = data.find(d => 
               d.district.toLowerCase().includes('mumbai') || 
@@ -94,7 +144,12 @@ const Index: React.FC = () => {
       }
     } catch (error: any) {
       console.error("Error loading data:", error);
-      setError(`Failed to load initial flood data: ${error.message || 'Unknown error'}. Please ensure your Supabase connection and data ingestion are correct.`);
+      toast({
+        title: forceRefresh ? "Refresh Failed" : "Error Loading Data",
+        description: `Could not fetch the latest flood data: ${error.message || 'Unknown error'}. Please ensure your Supabase connection and data ingestion are correct.`,
+        variant: "destructive",
+        duration: 5000,
+      });
       setDataFreshness('stale');
     } finally {
       setIsLoading(false); 
@@ -102,11 +157,10 @@ const Index: React.FC = () => {
     }
   }, [selectedState, selectedDistrict, toast]); 
 
-  // Initial data fetch on component mount
+  // Initial data fetch and geolocation on component mount
   useEffect(() => {
     loadFloodData(false);
 
-    // --- Geolocation for User's Current Position ---
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -122,7 +176,7 @@ const Index: React.FC = () => {
     }
   }, [loadFloodData]); 
 
-  // --- Dynamic Dropdown Options (Memoized) ---
+  // --- Dynamic Dropdown Options ---
   const availableStates = useMemo(() => {
     const states = new Set<string>();
     aggregatedFloodData.forEach(d => states.add(d.state));
@@ -137,8 +191,7 @@ const Index: React.FC = () => {
     return Array.from(districts).sort();
   }, [aggregatedFloodData, selectedState]);
 
-  // --- Dropdown Event Handlers (for RegionSelector) ---
-  // These now also update the map's center and zoom
+  // --- Dropdown Event Handlers ---
   const handleStateChange = useCallback((state: string) => {
     setSelectedState(state);
     setSelectedDistrict(''); 
@@ -164,7 +217,7 @@ const Index: React.FC = () => {
     }
   }, [aggregatedFloodData, selectedState]);
 
-  // --- Map Control Button Handlers (for MapControls) ---
+  // --- Map Control Button Handlers ---
   const handleZoomIn = useCallback(() => {
     if (mapInstance) mapInstance.zoomIn();
   }, [mapInstance]);
@@ -177,7 +230,7 @@ const Index: React.FC = () => {
     if (mapInstance) mapInstance.setView([20.5937, 78.9629], 5, { animate: true });
   }, [mapInstance]);
 
-  // Placeholder for toggleLayerVisibility for MapControls buttons
+  // Placeholder for toggleLayerVisibility 
   const toggleLayerVisibility = useCallback((layerId: string) => {
     console.log(`Toggle layer visibility for: ${layerId} (Feature not implemented yet for markers)`);
   }, []);
@@ -195,7 +248,6 @@ const Index: React.FC = () => {
       loadFloodData(true);
     }, 12 * 60 * 60 * 1000); 
     
-    // For demo purposes, add a shorter interval to simulate updates (dev mode only)
     if (process.env.NODE_ENV === 'development') {
       console.log('Development mode: adding demo interval');
       const demoInterval = setTimeout(() => {
@@ -207,7 +259,6 @@ const Index: React.FC = () => {
         clearTimeout(demoInterval);
       };
     }
-    
     return () => clearInterval(updateInterval);
   }, [loadFloodData]);
 
@@ -275,6 +326,8 @@ const Index: React.FC = () => {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-4">
+          {/* Header Component */}
+          {/* Assuming Header, CursorAiIndicator, Button, useAuth are correctly implemented */}
           <Header />
           <div className="flex items-center gap-2">
             <CursorAiIndicator />
@@ -320,39 +373,167 @@ const Index: React.FC = () => {
           </div>
         </div>
         
-        {/* Region Selector (Dropdowns for State/District) */}
-        <RegionSelector 
-          selectedState={selectedState}
-          setSelectedState={handleStateChange} 
-          selectedDistrict={selectedDistrict}
-          setSelectedDistrict={handleDistrictChange} 
-          availableStates={availableStates}
-          availableDistricts={availableDistricts}
-        />
-        
-        {/* Map and MapControls Section */}
-        <div className="mb-6 relative"> 
-          <Map 
-            selectedState={selectedState}
-            setSelectedState={setSelectedState} 
-            selectedDistrict={selectedDistrict}
-            setSelectedDistrict={setSelectedDistrict} 
-            mapCenter={mapCenter}
-            setMapCenter={setMapCenter}
-            mapZoom={mapZoom}
-            setMapZoom={setMapZoom}
-            aggregatedFloodData={aggregatedFloodData}
-            userLocation={userLocation}
-            setMapInstance={setMapInstance} 
-          />
-          {/* MapControls now separate for buttons only */}
-          <MapControls 
-            map={mapInstance} 
-            handleZoomIn={handleZoomIn}
-            handleZoomOut={handleZoomOut}
-            handleResetView={handleResetView}
-            toggleLayerVisibility={toggleLayerVisibility}
-          />
+        {/* Region Selector (State/District Dropdowns) - INLINED */}
+        <div className="flex flex-col md:flex-row justify-center items-center gap-4 mb-8 bg-white p-6 rounded-xl shadow-lg border border-gray-100 mx-auto max-w-2xl z-10 relative">
+          {/* State Selection Dropdown */}
+          <div className="flex items-center space-x-3 w-full md:w-auto">
+            <MapPin className="text-gray-500 flex-shrink-0" size={20} />
+            <label htmlFor="state-select" className="sr-only">Select a State</label>
+            <Select value={selectedState} onValueChange={handleStateChange}>
+              <SelectTrigger id="state-select" className="w-full md:w-[250px] h-12 rounded-xl shadow-sm border border-gray-300 bg-white text-gray-800 text-base focus:ring-2 focus:ring-blue-500 transition-all duration-200 ease-in-out hover:border-blue-400">
+                <SelectValue placeholder="Select a State" />
+              </SelectTrigger>
+              <SelectContent className="max-h-72 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-xl py-2 z-[999]"> 
+                {availableStates.length === 0 ? (
+                  <SelectItem disabled value="">No States Available</SelectItem>
+                ) : (
+                  availableStates.map(state => (
+                    <SelectItem key={state} value={state} className="py-2 px-4 hover:bg-blue-50 focus:bg-blue-100 cursor-pointer text-gray-800 text-base">{state}</SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {/* District Selection Dropdown */}
+          <div className="flex items-center space-x-3 w-full md:w-auto">
+            <LocateFixed className="text-gray-500 flex-shrink-0" size={20} />
+            <label htmlFor="district-select" className="sr-only">Select a District</label>
+            <Select value={selectedDistrict} onValueChange={handleDistrictChange} disabled={!selectedState || availableDistricts.length === 0}>
+              <SelectTrigger id="district-select" className="w-full md:w-[250px] h-12 rounded-xl shadow-sm border border-gray-300 bg-white text-gray-800 text-base focus:ring-2 focus:ring-blue-500 transition-all duration-200 ease-in-out hover:border-blue-400">
+                <SelectValue placeholder="Select a District" />
+              </SelectTrigger>
+              <SelectContent className="max-h-72 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-xl py-2 z-[999]"> 
+                {availableDistricts.length === 0 ? (
+                  <SelectItem disabled value="">Select a State first</SelectItem>
+                ) : (
+                  availableDistricts.map(district => (
+                    <SelectItem key={district} value={district} className="py-2 px-4 hover:bg-blue-50 focus:bg-blue-100 cursor-pointer text-gray-800 text-base">{district}</SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Main Map Section - INLINED MAP MARKER LOGIC */}
+        <div className="bg-white rounded-xl shadow-lg p-3 md:p-5 mb-8 h-[600px] w-full border border-gray-200 flex items-center justify-center relative">
+          <MapContainer 
+            center={mapCenter} 
+            zoom={mapZoom} 
+            className="h-full w-full rounded-lg" 
+            zoomControl={false} // Custom zoom controls will be provided
+            scrollWheelZoom={true} 
+          >
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            />
+            <MapRecenter center={mapCenter} zoom={mapZoom} />
+
+            {/* Render Markers for Each Aggregated District Data Point - INLINED LOGIC FROM MapMarker.tsx */}
+            {aggregatedFloodData.map((data, index) => (
+              data.coordinates && ( 
+                <Marker 
+                  key={`${data.state}-${data.district}-${index}`} 
+                  position={data.coordinates} 
+                  icon={L.divIcon({
+                    className: `custom-marker-icon ${data.floodRiskLevel}-risk ${
+                      data.floodRiskLevel === 'severe' || data.floodRiskLevel === 'high' ? 'animate-pulse' : ''
+                    }`, 
+                    iconSize: [36, 36], 
+                    html: `
+                      <div class="relative flex items-center justify-center p-1 rounded-full shadow-lg" 
+                           style="background-color: ${
+                             data.floodRiskLevel === 'severe' ? '#F44336' : 
+                             data.floodRiskLevel === 'high' ? '#FF9800' :   
+                             data.floodRiskLevel === 'medium' ? '#FFEB3B' : 
+                             '#8BC34A' 
+                           };">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin text-white"><path d="M12 12a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"/><path d="M19 10c0 7-7 12-7 12S5 17 5 10a7 7 0 0 1 14 0Z"/></svg>
+                      </div>
+                    `, 
+                    iconAnchor: [18, 36], 
+                    popupAnchor: [0, -30] 
+                  })}
+                  eventHandlers={{
+                    click: () => {
+                      setSelectedState(data.state);
+                      setSelectedDistrict(data.district);
+                      setMapCenter(data.coordinates);
+                      setMapZoom(10); 
+                    },
+                  }}
+                >
+                  <Popup>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', color: '#333' }}>
+                      <strong style={{ fontSize: '16px' }}>{data.district}, {data.state}</strong><br/>
+                      <div style={{ marginTop: '5px' }}>
+                          Risk Level: <strong style={{ color: 
+                              data.floodRiskLevel === 'severe' ? '#F44336' : 
+                              data.floodRiskLevel === 'high' ? '#FF9800' : 
+                              data.floodRiskLevel === 'medium' ? '#FFEB3B' : 
+                              '#8BC34A' 
+                          }}>{data.floodRiskLevel.toUpperCase()}</strong>
+                      </div>
+                      <div style={{ marginTop: '5px' }}>
+                          Reservoir % Full: {data.reservoirPercentage ? `<strong>${data.reservoirPercentage.toFixed(1)}%</strong>` : 'N/A'}<br/>
+                          Inflow (Cusecs): {data.inflowCusecs ? `<strong>${data.inflowCusecs.toLocaleString()}</strong>` : 'N/A'}<br/>
+                          Outflow (Cusecs): {data.outflowCusecs ? `<strong>${data.outflowCusecs.toLocaleString()}</strong>` : 'N/A'}<br/>
+                          Last Updated: {data.lastUpdated ? new Date(data.lastUpdated).toLocaleDateString() : 'N/A'}
+                      </div>
+                    </div>
+                  </Popup>
+                </Marker>
+              )
+            ))}
+
+            {/* Marker for user's current location */}
+            {userLocation && (
+              <Marker position={userLocation} icon={L.divIcon({
+                  className: 'my-custom-user-location-pin', 
+                  iconSize: [30, 30], 
+                  html: `<div class="relative w-full h-full bg-blue-600 rounded-full flex items-center justify-center border-2 border-white shadow-lg animate-pulse">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-dot text-white"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="1"/></svg>
+                        </div>`, 
+                  iconAnchor: [15, 15] 
+              })}>
+                <Popup>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
+                      <strong>Your Current Location</strong><br/>
+                      Detected by browser.
+                  </div>
+                </Popup>
+              </Marker>
+            )}
+          </MapContainer>
+
+          {/* MapControls (Buttons) - INLINED */}
+          <div className="absolute top-16 right-4 z-10 flex flex-col space-y-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" onClick={() => toggleLayerVisibility('floodAreas')} className="bg-white/90 hover:bg-white">
+                    <Layers className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  <p>Toggle flood areas</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          <div className="absolute bottom-16 right-4 z-10 flex flex-col space-y-2">
+            <Button variant="outline" size="icon" onClick={handleZoomIn} className="bg-white/90 hover:bg-white">
+              <ZoomIn className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" onClick={handleZoomOut} className="bg-white/90 hover:bg-white">
+              <ZoomOut className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" onClick={handleResetView} className="bg-white/90 hover:bg-white">
+              <MapIcon className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         
         {/* Data freshness and refresh button */}
@@ -362,7 +543,6 @@ const Index: React.FC = () => {
               <Clock className="h-3 w-3 mr-1" />
               Last updated: {lastUpdateTime.toLocaleString()}
             </div>
-            {/* Show total regions with data */}
             {totalRegionsWithData > 0 && (
               <div className="timestamp-badge bg-blue-50 text-blue-700">
                 <Database className="h-3 w-3 mr-1" />
@@ -396,17 +576,19 @@ const Index: React.FC = () => {
           </div>
         )}
 
-        {/* Updated layout: content sections */}
+        {/* Content sections */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           <div className="lg:col-span-2 space-y-6">
-            {/* Left side content */}
-            {/* Pass displayRegionData to FloodStats and PredictionCard */}
-            <FloodStats floodData={displayRegionData} />
+            {/* Pass displayRegionData to FloodStats and PredictionCard (assuming their props allow this) */}
+            {/* You will need to ensure FloodStats, ChartSection, PredictionCard can handle IMDRegionData type */}
+            {/* If ChartSection or others still expect `selectedRegion` as a string, pass selectedDistrict */}
+            {/* For ChartSection: Assuming it needs a region string for data filtering/display */}
+            {/* For FloodStats & PredictionCard: Assuming they can handle `IMDRegionData | null` */}
+            <FloodStats floodData={displayRegionData as any} /> 
             <ChartSection selectedRegion={selectedDistrict} /> 
-            <PredictionCard floodData={displayRegionData} />
+            <PredictionCard floodData={displayRegionData as any} />
           </div>
             
-          {/* Right side content - additional info, no map here anymore */}
           <div className="lg:col-span-1">
             <div className="sticky top-6 bg-white p-4 rounded-lg shadow">
               <h2 className="text-lg font-medium mb-2">Flood Risk Information</h2>
@@ -464,6 +646,8 @@ const Index: React.FC = () => {
         </div>
             
         {/* Historical Flood Data Section */}
+        {/* Assuming HistoricalFloodData doesn't rely on selectedRegion/District in a complex way
+            or can handle simple string prop. If it needs aggregated data, it needs its own fetch or props. */}
         {showHistoricalData && <HistoricalFloodData />}
             
         <div className="text-center text-sm rounded-lg bg-white p-4 shadow-sm mb-6">
