@@ -37,7 +37,7 @@ export type IMDRegionData = {
 };
 
 // Define the maximum number of records to fetch per Supabase request to enable pagination
-const SUPABASE_FETCH_LIMIT = 1000;
+const SUPABASE_FETCH_LIMIT = 10000; // Increased to 10,000 as requested
 
 export const imdApiService = {
   /**
@@ -64,7 +64,6 @@ export const imdApiService = {
         if (error) {
           console.error('ERROR: Supabase data fetch failed during pagination:', error);
           hasMore = false; // Stop fetching on error
-          // Continue with whatever data was fetched successfully so far, or return empty if nothing
           break;
         }
 
@@ -118,11 +117,13 @@ export const imdApiService = {
 
         const regionEntry = regionDataMap.get(mapKey)!; // Assert not undefined as we just ensured it exists
 
-        // Sanitize percentage_full, ensuring it's a number and within 0-100 range
+        // Strict percentage_full sanitization with clamping to 0-100 range
         let currentPercentageFull: number = typeof res.percentage_full === 'number'
           ? res.percentage_full
           : parseFloat(String(res.percentage_full || '0'));
-        currentPercentageFull = isNaN(currentPercentageFull) ? 0 : Math.min(100, Math.max(0, currentPercentageFull));
+        
+        // Use Math.min and Math.max to clamp between 0 and 100, with NaN resolving to 0
+        currentPercentageFull = Math.min(100, Math.max(0, isNaN(currentPercentageFull) ? 0 : currentPercentageFull));
 
         // Aggregate values:
         // Use the highest percentage_full encountered for the district
@@ -139,13 +140,15 @@ export const imdApiService = {
         }
 
         // --- Calculate Flood Risk Level for the district (Aggressive Thresholds) ---
-        // This is a simplified risk calculation based on reservoir data only.
+        // NO RANDOMNESS - purely derived from reservoir data
         let currentReservoirRisk: IMDRegionData['floodRiskLevel'] = 'low';
-        if (currentPercentageFull >= 90 || (res.inflow_cusecs || 0) > 10000) {
+        
+        // Aggressive and sensitive thresholds to trigger higher risk levels
+        if (currentPercentageFull >= 50 || (res.inflow_cusecs || 0) >= 1000) {
             currentReservoirRisk = 'severe';
-        } else if (currentPercentageFull >= 75 || (res.inflow_cusecs || 0) > 5000) {
+        } else if (currentPercentageFull >= 30 || (res.inflow_cusecs || 0) >= 100) {
             currentReservoirRisk = 'high';
-        } else if (currentPercentageFull >= 50 || (res.inflow_cusecs || 0) > 1000) {
+        } else if (currentPercentageFull >= 5 || (res.inflow_cusecs || 0) >= 10) {
             currentReservoirRisk = 'medium';
         }
 
@@ -170,5 +173,10 @@ export const imdApiService = {
       // It's crucial to return a structured empty array if there's a critical error
       return [];
     }
+  },
+
+  // Keep existing function for backward compatibility
+  fetchFloodData: async (): Promise<IMDRegionData[]> => {
+    return await imdApiService.fetchAggregatedFloodData();
   },
 };
