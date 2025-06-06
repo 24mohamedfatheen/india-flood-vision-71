@@ -1,10 +1,8 @@
-// src/components/RegionSelector.tsx
-// This component provides the State and District selection dropdowns,
-// populating options dynamically from data passed via props.
 
-import React from 'react';
-import { MapPin, LocateFixed } from 'lucide-react'; // Added LocateFixed icon for district dropdown
-// Import UI components for dropdowns from your local shadcn/ui setup
+import React, { useState, useEffect } from 'react';
+import { MapPin } from 'lucide-react';
+import { regions } from '../data/floodData';
+import { indiaStatesAndDistricts, getDistrictsForState, getDistrictFullData } from '../data/indiaStatesDistricts';
 import {
   Select,
   SelectContent,
@@ -13,81 +11,133 @@ import {
   SelectValue,
 } from "./ui/select";
 
-// Define the props for the RegionSelector component
 interface RegionSelectorProps {
-  // These props will be provided by the parent component (Index.tsx)
-  selectedState: string;
-  setSelectedState: (value: string) => void; // Callback to update selected state in parent
-  selectedDistrict: string;
-  setSelectedDistrict: (value: string) => void; // Callback to update selected district in parent
-  availableStates: string[]; // List of unique states from aggregated data
-  availableDistricts: string[]; // List of unique districts (filtered by selected state) from aggregated data
+  selectedRegion: string;
+  onRegionChange: (value: string) => void;
 }
 
-const RegionSelector: React.FC<RegionSelectorProps> = ({ 
-  selectedState, 
-  setSelectedState, 
-  selectedDistrict, 
-  setSelectedDistrict, 
-  availableStates, 
-  availableDistricts 
-}) => {
-  // The state management for selectedState and selectedDistrict now happens in Index.tsx
-  // and is passed down as props. No internal state for these is needed here.
+const RegionSelector: React.FC<RegionSelectorProps> = ({ selectedRegion, onRegionChange }) => {
+  const [selectedState, setSelectedState] = useState<string>("");
+  const [selectedDistrict, setSelectedDistrict] = useState<string>("");
+  const [availableDistricts, setAvailableDistricts] = useState<{ value: string; label: string }[]>([]);
+  
+  // When a state is selected, update the available districts
+  useEffect(() => {
+    if (selectedState) {
+      const districts = getDistrictsForState(selectedState);
+      setAvailableDistricts(districts);
+      
+      // Reset district selection when state changes
+      setSelectedDistrict("");
+    }
+  }, [selectedState]);
+
+  // Handle state selection
+  const handleStateChange = (value: string) => {
+    setSelectedState(value);
+  };
+  
+  // Handle district selection
+  const handleDistrictChange = (value: string) => {
+    setSelectedDistrict(value);
+    
+    // Find the matching region in the flood data if possible
+    // In a real app, you would probably map districts to regions more precisely
+    const matchingRegion = regions.find(region => 
+      region.label.toLowerCase().includes(value) || 
+      value.includes(region.label.toLowerCase())
+    );
+    
+    if (matchingRegion) {
+      onRegionChange(matchingRegion.value);
+    } else {
+      // If no direct match in regions data, use the district value as region
+      onRegionChange(value);
+    }
+  };
 
   return (
-    // This div provides the layout and styling for the dropdowns
-    <div className="flex flex-col md:flex-row justify-center items-center gap-4 mb-8 bg-white p-6 rounded-xl shadow-lg border border-gray-100 mx-auto max-w-2xl z-10 relative">
-      {/* State Selection Dropdown */}
-      <div className="flex items-center space-x-3 w-full md:w-auto">
-        <MapPin className="text-gray-500 flex-shrink-0" size={20} />
-        <label htmlFor="state-select" className="sr-only">Select a State</label>
-        <Select 
-          value={selectedState} 
-          onValueChange={setSelectedState} // Directly use the setter from props
-        >
-          <SelectTrigger id="state-select" className="w-full md:w-[250px] h-12 rounded-xl shadow-sm border border-gray-300 bg-white text-gray-800 text-base focus:ring-2 focus:ring-blue-500 transition-all duration-200 ease-in-out hover:border-blue-400">
-            <SelectValue placeholder="Select a State" />
-          </SelectTrigger>
-          <SelectContent className="max-h-72 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-xl py-2 z-[999]"> 
-            {availableStates.length === 0 ? (
-              <SelectItem disabled value="">No States Available</SelectItem>
-            ) : (
-              availableStates.map(state => (
-                <SelectItem key={state} value={state} className="py-2 px-4 hover:bg-blue-50 focus:bg-blue-100 cursor-pointer text-gray-800 text-base">{state}</SelectItem>
-              ))
-            )}
-          </SelectContent>
-        </Select>
+    <div className="bg-white rounded-lg border border-border p-4 shadow-sm mb-6">
+      <div className="flex items-center mb-4">
+        <MapPin className="mr-2 h-5 w-5 text-primary" />
+        <h2 className="text-lg font-semibold">Select Region</h2>
       </div>
       
-      {/* District Selection Dropdown - only enabled if a state is selected and districts are available */}
-      <div className="flex items-center space-x-3 w-full md:w-auto">
-        <LocateFixed className="text-gray-500 flex-shrink-0" size={20} />
-        <label htmlFor="district-select" className="sr-only">Select a District</label>
-        <Select 
-          value={selectedDistrict} 
-          onValueChange={setSelectedDistrict} // Directly use the setter from props
-          disabled={!selectedState || availableDistricts.length === 0} // Disable if no state selected or no districts
-        >
-          <SelectTrigger id="district-select" className="w-full md:w-[250px] h-12 rounded-xl shadow-sm border border-gray-300 bg-white text-gray-800 text-base focus:ring-2 focus:ring-blue-500 transition-all duration-200 ease-in-out hover:border-blue-400">
-            <SelectValue placeholder="Select a District" />
-          </SelectTrigger>
-          <SelectContent className="max-h-72 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-xl py-2 z-[999]"> 
-            {availableDistricts.length === 0 ? (
-              <SelectItem disabled value="">Select a State first</SelectItem>
-            ) : (
-              availableDistricts.map(district => (
-                <SelectItem key={district} value={district} className="py-2 px-4 hover:bg-blue-50 focus:bg-blue-100 cursor-pointer text-gray-800 text-base">{district}</SelectItem>
-              ))
-            )}
-          </SelectContent>
-        </Select>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* State Selection */}
+        <div>
+          <label htmlFor="state-select" className="block text-sm font-medium mb-2 text-muted-foreground">
+            Select a state in India:
+          </label>
+          <Select value={selectedState} onValueChange={handleStateChange}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select a state" />
+            </SelectTrigger>
+            <SelectContent>
+              {indiaStatesAndDistricts.map((state) => (
+                <SelectItem key={state.value} value={state.value}>
+                  {state.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        
+        {/* District Selection - only shown if a state is selected */}
+        {selectedState && (
+          <div>
+            <label htmlFor="district-select" className="block text-sm font-medium mb-2 text-muted-foreground">
+              Select a district:
+            </label>
+            <Select value={selectedDistrict} onValueChange={handleDistrictChange}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a district" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableDistricts.map((district) => (
+                  <SelectItem key={district.value} value={district.value}>
+                    {district.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        
+        {/* Original Region Selection - keep for compatibility */}
+        <div className="md:col-span-2 mt-4">
+          <label htmlFor="region-select" className="block text-sm font-medium mb-2 text-muted-foreground">
+            Or select a location with flood data:
+          </label>
+          <select
+            id="region-select"
+            className="w-full p-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+            value={selectedRegion}
+            onChange={(e) => onRegionChange(e.target.value)}
+          >
+            {regions.map((region) => (
+              <option key={region.value} value={region.value}>
+                {region.label}, {region.state}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        <div className="flex items-center justify-center md:justify-end md:col-span-2 mt-4">
+          <div className="flex items-center mr-4">
+            <span className="inline-block w-3 h-3 rounded-full bg-flood-safe mr-2"></span>
+            <span className="text-xs">Low Risk</span>
+          </div>
+          <div className="flex items-center mr-4">
+            <span className="inline-block w-3 h-3 rounded-full bg-flood-warning mr-2"></span>
+            <span className="text-xs">Medium Risk</span>
+          </div>
+          <div className="flex items-center mr-4">
+            <span className="inline-block w-3 h-3 rounded-full bg-flood-danger mr-2"></span>
+            <span className="text-xs">High Risk</span>
+          </div>
+        </div>
       </div>
-
-      {/* The original <select> and risk legend below are removed,
-          as the new structure uses the shadcn/ui Select components
-          and the risk legend is handled by Index.tsx/FloodStats. */}
     </div>
   );
 };
