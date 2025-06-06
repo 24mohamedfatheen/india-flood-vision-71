@@ -1,3 +1,4 @@
+
 // src/services/imdApiService.ts
 // This file is responsible for fetching all reservoir data from Supabase
 // with pagination, aggregating it by state/district, and calculating flood risk levels.
@@ -5,47 +6,39 @@
 import { supabase } from '../integrations/supabase/client';
 
 // Define the structure for raw reservoir data coming directly from Supabase
-// (Matches your Supabase table columns)
+// All properties are potentially null/undefined from database
 export interface RawReservoirData {
-  id?: number;
-  reservoir_name?: string;
-  state?: string;
-  district?: string;
-  current_level_mcm?: number;
-  capacity_mcm?: number;
-  percentage_full?: number; // This is now derived during ingestion
-  inflow_cusecs?: number;
-  outflow_cusecs?: number;
-  last_updated?: string;
-  lat?: number;
-  long?: number;
+  id?: number | null;
+  reservoir_name?: string | null;
+  state?: string | null;
+  district?: string | null;
+  current_level_mcm?: number | null;
+  capacity_mcm?: number | null;
+  percentage_full?: number | null;
+  inflow_cusecs?: number | null;
+  outflow_cusecs?: number | null;
+  last_updated?: string | null;
+  lat?: number | null;
+  long?: number | null;
 }
 
-// Define the aggregated data structure that your UI components will consume
+// Define the aggregated data structure with guaranteed non-null properties
 export type IMDRegionData = {
   state: string;
   district: string;
-  reservoirPercentage: number; // Max percentage_full for the district
-  inflowCusecs: number;        // Sum of inflows for the district
-  outflowCusecs: number;       // Sum of outflows for the district (for completeness, though not used in risk)
+  reservoirPercentage: number;
+  inflowCusecs: number;
+  outflowCusecs: number;
   floodRiskLevel: 'low' | 'medium' | 'high' | 'severe';
-  // These fields are placeholders. As per master plan, no dummy/random data.
-  populationAffected: number; 
-  affectedArea: number;       
-  coordinates: [number, number]; // Representative coordinates for the district
-  lastUpdated: string;           // Most recent last_updated for any reservoir in the district
+  populationAffected: number;
+  affectedArea: number;
+  coordinates: [number, number];
+  lastUpdated: string;
 };
 
-// Define the maximum number of records to fetch per Supabase request to enable pagination
 const SUPABASE_FETCH_LIMIT = 1000;
 
 export const imdApiService = {
-  /**
-   * Fetches all historical reservoir data from Supabase using pagination,
-   * aggregates it by state and district, and calculates flood risk levels.
-   * This is the primary data source for the Flood Vision map and panels.
-   * @returns A promise that resolves to an array of aggregated IMDRegionData.
-   */
   fetchAggregatedFloodData: async (): Promise<IMDRegionData[]> => {
     console.log('--- imdApiService: Starting comprehensive data fetch and aggregation ---');
 
@@ -59,23 +52,20 @@ export const imdApiService = {
         const { data: currentBatch, error } = await supabase
           .from('indian_reservoir_levels')
           .select('reservoir_name, state, district, current_level_mcm, capacity_mcm, percentage_full, inflow_cusecs, outflow_cusecs, last_updated, lat, long')
-          .range(offset, offset + SUPABASE_FETCH_LIMIT - 1); // Supabase range is inclusive
+          .range(offset, offset + SUPABASE_FETCH_LIMIT - 1);
 
         if (error) {
           console.error('ERROR: Supabase data fetch failed during pagination:', error);
-          hasMore = false; // Stop fetching on error
-          // Continue with whatever data was fetched successfully so far, or return empty if nothing
           break;
         }
 
         if (!currentBatch || currentBatch.length === 0) {
-          hasMore = false; // No more records to fetch
+          hasMore = false;
         } else {
           allRawReservoirData = allRawReservoirData.concat(currentBatch);
           console.log(`Fetched ${currentBatch.length} records in current batch. Total raw records fetched: ${allRawReservoirData.length}`);
           offset += currentBatch.length;
 
-          // If the number of records returned is less than the limit, it's the last batch
           if (currentBatch.length < SUPABASE_FETCH_LIMIT) {
             hasMore = false;
           }
@@ -89,67 +79,62 @@ export const imdApiService = {
 
       console.log(`SUCCESS: Finished fetching all ${allRawReservoirData.length} raw reservoir records from Supabase.`);
 
-      // --- Aggregation Logic: Process raw data into IMDRegionData ---
-      const regionDataMap = new Map<string, IMDRegionData>(); // Key: 'state_district_lowercase'
+      const regionDataMap = new Map<string, IMDRegionData>();
 
       allRawReservoirData.forEach((res: RawReservoirData) => {
-        // Sanitize and normalize state/district names for consistent mapping
-        const stateName = res.state ? res.state.trim() : 'Unknown State';
-        const districtName = res.district ? res.district.trim() : 'Unknown District';
+        // Robust data extraction with defaults
+        const stateName = res.state?.trim() || 'Unknown State';
+        const districtName = res.district?.trim() || 'Unknown District';
         const mapKey = `${stateName.toLowerCase()}_${districtName.toLowerCase()}`;
 
-        // Initialize region entry if it doesn't exist
+        // Safe number extraction
+        const lat = typeof res.lat === 'number' && !isNaN(res.lat) ? res.lat : 20.5937;
+        const long = typeof res.long === 'number' && !isNaN(res.long) ? res.long : 78.9629;
+        const percentageFull = typeof res.percentage_full === 'number' && !isNaN(res.percentage_full) 
+          ? Math.min(100, Math.max(0, res.percentage_full)) 
+          : 0;
+        const inflowCusecs = typeof res.inflow_cusecs === 'number' && !isNaN(res.inflow_cusecs) ? res.inflow_cusecs : 0;
+        const outflowCusecs = typeof res.outflow_cusecs === 'number' && !isNaN(res.outflow_cusecs) ? res.outflow_cusecs : 0;
+        const lastUpdated = res.last_updated || new Date().toISOString();
+
         if (!regionDataMap.has(mapKey)) {
-          // Use the first reservoir's coordinates as a representative for the district, or a fallback
-          const representativeCoords: [number, number] = [res.lat || 20.5937, res.long || 78.9629]; // Default to center of India
           regionDataMap.set(mapKey, {
             state: stateName,
             district: districtName,
-            reservoirPercentage: 0, // Will be updated to max
-            inflowCusecs: 0,        // Will be updated to sum
-            outflowCusecs: 0,       // Will be updated to sum
-            floodRiskLevel: 'low',  // Default, will be updated to highest risk
-            populationAffected: 0,  // Placeholder as per "no dummy data" rule
-            affectedArea: 0,        // Placeholder as per "no dummy data" rule
-            coordinates: representativeCoords,
-            lastUpdated: res.last_updated || new Date().toISOString(), // Most recent update in the district
+            reservoirPercentage: 0,
+            inflowCusecs: 0,
+            outflowCusecs: 0,
+            floodRiskLevel: 'low', // Always initialize to a valid value
+            populationAffected: 0,
+            affectedArea: 0,
+            coordinates: [lat, long],
+            lastUpdated: lastUpdated,
           });
         }
 
-        const regionEntry = regionDataMap.get(mapKey)!; // Assert not undefined as we just ensured it exists
+        const regionEntry = regionDataMap.get(mapKey)!;
 
-        // Sanitize percentage_full, ensuring it's a number and within 0-100 range
-        let currentPercentageFull: number = typeof res.percentage_full === 'number'
-          ? res.percentage_full
-          : parseFloat(String(res.percentage_full || '0'));
-        currentPercentageFull = isNaN(currentPercentageFull) ? 0 : Math.min(100, Math.max(0, currentPercentageFull));
-
-        // Aggregate values:
-        // Use the highest percentage_full encountered for the district
-        if (currentPercentageFull > regionEntry.reservoirPercentage) {
-          regionEntry.reservoirPercentage = currentPercentageFull;
+        // Aggregate values
+        if (percentageFull > regionEntry.reservoirPercentage) {
+          regionEntry.reservoirPercentage = percentageFull;
         }
-        // Sum inflows and outflows for the district
-        regionEntry.inflowCusecs += (res.inflow_cusecs || 0);
-        regionEntry.outflowCusecs += (res.outflow_cusecs || 0); // Include outflow in aggregation
+        regionEntry.inflowCusecs += inflowCusecs;
+        regionEntry.outflowCusecs += outflowCusecs;
 
-        // Update last updated timestamp to the most recent one for the district
-        if (res.last_updated && new Date(res.last_updated) > new Date(regionEntry.lastUpdated)) {
-            regionEntry.lastUpdated = res.last_updated;
+        if (new Date(lastUpdated) > new Date(regionEntry.lastUpdated)) {
+          regionEntry.lastUpdated = lastUpdated;
         }
 
-        // --- Calculate Flood Risk Level for the district (Aggressive Thresholds) ---
-        // This is a simplified risk calculation based on reservoir data only.
+        // Calculate flood risk level - always assign a valid value
         let currentReservoirRisk: IMDRegionData['floodRiskLevel'] = 'low';
-        if (currentPercentageFull >= 90 || (res.inflow_cusecs || 0) > 10000) {
-            currentReservoirRisk = 'severe';
-        } else if (currentPercentageFull >= 75 || (res.inflow_cusecs || 0) > 5000) {
-            currentReservoirRisk = 'high';
-        } else if (currentPercentageFull >= 50 || (res.inflow_cusecs || 0) > 1000) {
-            currentReservoirRisk = 'medium';
+        if (percentageFull >= 90 || inflowCusecs > 10000) {
+          currentReservoirRisk = 'severe';
+        } else if (percentageFull >= 75 || inflowCusecs > 5000) {
+          currentReservoirRisk = 'high';
+        } else if (percentageFull >= 50 || inflowCusecs > 1000) {
+          currentReservoirRisk = 'medium';
         }
 
-        // Update the overall flood risk level for the region if a higher risk is encountered
         const riskLevelOrder = { 'low': 0, 'medium': 1, 'high': 2, 'severe': 3 };
         if (riskLevelOrder[currentReservoirRisk] > riskLevelOrder[regionEntry.floodRiskLevel]) {
           regionEntry.floodRiskLevel = currentReservoirRisk;
@@ -157,17 +142,12 @@ export const imdApiService = {
       });
 
       const aggregatedResult = Array.from(regionDataMap.values());
-
       console.log(`SUCCESS: Aggregated data for ${aggregatedResult.length} unique regions.`);
-      aggregatedResult.forEach(item => {
-          console.log(`DEBUG_IMD_AGGREGATED: State=${item.state}, District=${item.district}, ReservoirPercentage=${item.reservoirPercentage.toFixed(2)}, InflowCusecs=${item.inflowCusecs}, FloodRiskLevel=${item.floodRiskLevel}, Coordinates=[${item.coordinates[0].toFixed(4)}, ${item.coordinates[1].toFixed(4)}]`);
-      });
-
+      
       return aggregatedResult;
 
     } catch (error: any) {
       console.error('CRITICAL ERROR in imdApiService.fetchAggregatedFloodData:', error);
-      // It's crucial to return a structured empty array if there's a critical error
       return [];
     }
   },

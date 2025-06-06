@@ -3,7 +3,15 @@ import React from 'react';
 import { ZoomIn, ZoomOut, Map as MapIcon, Layers } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { MapControlsProps } from './types';
+import L from 'leaflet';
+
+interface MapControlsProps {
+  map: L.Map | null;
+  handleZoomIn: () => void;
+  handleZoomOut: () => void;
+  handleResetView: () => void;
+  toggleLayerVisibility: (layerId: string) => void;
+}
 
 const MapControls: React.FC<MapControlsProps> = ({ 
   map, 
