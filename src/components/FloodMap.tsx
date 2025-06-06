@@ -33,7 +33,7 @@ const normalizeDistrictName = (name: string): string => {
     .trim();
 };
 
-// Enhanced matching function
+// Enhanced matching function - moved to top level to avoid hoisting issues
 const isDistrictMatch = (geoJsonName: string, targetName: string): boolean => {
   const normalized1 = normalizeDistrictName(geoJsonName);
   const normalized2 = normalizeDistrictName(targetName);
@@ -137,10 +137,10 @@ const FloodMap: React.FC<FloodMapProps> = ({
       const featureDistrict = feature.properties?.NAME_2 || '';
       const featureState = feature.properties?.NAME_1 || '';
       
-      const isDistrictMatch = featureDistrict && isDistrictMatch(featureDistrict, selectedDistrict);
+      const isDistrictNameMatch = featureDistrict && isDistrictMatch(featureDistrict, selectedDistrict);
       const isStateMatch = featureState && normalizeDistrictName(featureState).includes(normalizeDistrictName(selectedState));
       
-      isSelected = isDistrictMatch && isStateMatch;
+      isSelected = isDistrictNameMatch && isStateMatch;
     }
     
     return {
@@ -213,10 +213,10 @@ const FloodMap: React.FC<FloodMapProps> = ({
       geoJsonLayerRef.current.eachLayer((layer: L.Layer) => {
         const feature = (layer as any).feature;
         if (feature?.properties?.NAME_2 && feature?.properties?.NAME_1) {
-          const isDistrictMatch = isDistrictMatch(feature.properties.NAME_2, selectedDistrict);
+          const isDistrictNameMatch = isDistrictMatch(feature.properties.NAME_2, selectedDistrict);
           const isStateMatch = normalizeDistrictName(feature.properties.NAME_1).includes(normalizeDistrictName(selectedState));
           
-          if (isDistrictMatch && isStateMatch) {
+          if (isDistrictNameMatch && isStateMatch) {
             targetLayer = layer;
           }
         }
@@ -254,27 +254,47 @@ const FloodMap: React.FC<FloodMapProps> = ({
     );
   }
 
+  const mapCenter: L.LatLngExpression = [20.5937, 78.9629];
+
   return (
     <div className={`w-full h-[400px] rounded-lg overflow-hidden relative ${className}`}>
       <MapContainer
-        center={[20.5937, 78.9629] as L.LatLngExpression}
-        zoom={5}
-        style={{ height: '100%', width: '100%' }}
-        scrollWheelZoom={true}
-        ref={mapRef}
+        {...{
+          center: mapCenter,
+          zoom: 5,
+          style: { height: '100%', width: '100%' },
+          scrollWheelZoom: true,
+          ref: mapRef
+        }}
       >
         <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          {...{
+            url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          }}
         />
         
         {geoJsonData && (
           <GeoJSON
-            key={`geojson-${selectedDistrict}-${selectedState}`}
-            data={geoJsonData}
-            pathOptions={styleFeature}
-            onEachFeature={onEachFeature}
-            ref={geoJsonLayerRef}
+            {...{
+              key: `geojson-${selectedDistrict}-${selectedState}`,
+              data: geoJsonData,
+              pathOptions: styleFeature,
+              eventHandlers: {
+                add: (e) => {
+                  const layer = e.target;
+                  if (layer.eachLayer) {
+                    layer.eachLayer((subLayer: L.Layer) => {
+                      const feature = (subLayer as any).feature;
+                      if (feature) {
+                        onEachFeature(feature, subLayer);
+                      }
+                    });
+                  }
+                }
+              },
+              ref: geoJsonLayerRef
+            }}
           />
         )}
       </MapContainer>
