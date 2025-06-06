@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "./ui/select";
 import { useToast } from "../hooks/use-toast";
+import { supabase } from '../integrations/supabase/client';
 
 interface RegionSelectorProps {
   selectedRegion: string;
@@ -29,17 +30,37 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
   const [loadingStates, setLoadingStates] = useState<boolean>(true);
   const [loadingDistricts, setLoadingDistricts] = useState<boolean>(false);
   const [loadingRainfall, setLoadingRainfall] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { toast } = useToast();
   
   // Load states on component mount
   useEffect(() => {
     const loadStates = async () => {
       setLoadingStates(true);
+      setErrorMessage(null);
       try {
-        const states = await fetchStatesFromReservoirs();
-        setAvailableStates(states);
+        console.log('Fetching states from Supabase...');
+        const { data, error } = await supabase
+          .from('indian_reservoir_levels')
+          .select('state')
+          .not('state', 'is', null);
+        
+        console.log('Supabase response:', data, error);
+        
+        if (error) {
+          throw new Error(error.message);
+        }
+        
+        if (data && data.length > 0) {
+          const uniqueStates = [...new Set(data.map((row) => row.state))].sort();
+          console.log('Unique states:', uniqueStates);
+          setAvailableStates(uniqueStates);
+        } else {
+          setErrorMessage("No states found in database");
+        }
       } catch (error) {
         console.error('Error loading states:', error);
+        setErrorMessage("Could not fetch states. Please try again.");
         toast({
           title: "Error",
           description: "Failed to load states from database",
@@ -58,12 +79,32 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
     if (selectedState) {
       const loadDistricts = async () => {
         setLoadingDistricts(true);
+        setErrorMessage(null);
         try {
-          const districts = await fetchDistrictsForState(selectedState);
-          setAvailableDistricts(districts);
+          console.log('Fetching districts for state:', selectedState);
+          const { data, error } = await supabase
+            .from('indian_reservoir_levels')
+            .select('district')
+            .eq('state', selectedState)
+            .not('district', 'is', null);
+          
+          console.log('Districts response:', data, error);
+          
+          if (error) {
+            throw new Error(error.message);
+          }
+          
+          if (data && data.length > 0) {
+            const uniqueDistricts = [...new Set(data.map((row) => row.district))].sort();
+            console.log('Unique districts:', uniqueDistricts);
+            setAvailableDistricts(uniqueDistricts);
+          } else {
+            setAvailableDistricts([]);
+          }
           setSelectedDistrict(""); // Reset district selection
         } catch (error) {
           console.error('Error loading districts:', error);
+          setErrorMessage("Could not fetch districts. Please try again.");
           toast({
             title: "Error",
             description: "Failed to load districts for selected state",
@@ -84,6 +125,7 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
   // Handle state selection
   const handleStateChange = (value: string) => {
     setSelectedState(value);
+    setSelectedDistrict("");
     console.log('State selected:', value);
   };
   
@@ -94,6 +136,7 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
     
     if (selectedState && value) {
       setLoadingRainfall(true);
+      setErrorMessage(null);
       
       try {
         // Get coordinates for the district
@@ -128,6 +171,7 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
         }
       } catch (error) {
         console.error('Error processing district selection:', error);
+        setErrorMessage("Could not load weather data. Please try again.");
         toast({
           title: "Error",
           description: "Failed to load weather data for selected location",
@@ -151,6 +195,12 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
           </div>
         )}
       </div>
+      
+      {errorMessage && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-800">{errorMessage}</p>
+        </div>
+      )}
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* State Selection */}
@@ -223,15 +273,15 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
         {/* Risk Level Legend */}
         <div className="flex items-center justify-center md:justify-end md:col-span-2 mt-4">
           <div className="flex items-center mr-4">
-            <span className="inline-block w-3 h-3 rounded-full bg-flood-safe mr-2"></span>
+            <span className="inline-block w-3 h-3 rounded-full bg-green-500 mr-2"></span>
             <span className="text-xs">Low Risk</span>
           </div>
           <div className="flex items-center mr-4">
-            <span className="inline-block w-3 h-3 rounded-full bg-flood-warning mr-2"></span>
+            <span className="inline-block w-3 h-3 rounded-full bg-yellow-500 mr-2"></span>
             <span className="text-xs">Medium Risk</span>
           </div>
           <div className="flex items-center mr-4">
-            <span className="inline-block w-3 h-3 rounded-full bg-flood-danger mr-2"></span>
+            <span className="inline-block w-3 h-3 rounded-full bg-orange-500 mr-2"></span>
             <span className="text-xs">High Risk</span>
           </div>
           <div className="flex items-center">

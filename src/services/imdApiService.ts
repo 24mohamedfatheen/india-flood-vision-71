@@ -1,4 +1,3 @@
-
 import { supabase } from '../integrations/supabase/client';
 import { regions } from '../data/floodData';
 import { ReservoirData } from './reservoirDataService';
@@ -42,7 +41,7 @@ export type IMDRegionData = {
   coordinates: [number, number];
 };
 
-// Weather API integration for rainfall data
+// Weather API integration for rainfall data with error handling
 export const fetchRainfallData = async (lat: number, lon: number, days: number = 7) => {
   try {
     const endDate = new Date();
@@ -50,6 +49,8 @@ export const fetchRainfallData = async (lat: number, lon: number, days: number =
     startDate.setDate(startDate.getDate() - days);
     
     const formatDate = (date: Date) => date.toISOString().split('T')[0];
+    
+    console.log(`Fetching rainfall data for coordinates: ${lat}, ${lon}`);
     
     // Open-Meteo API for historical and forecast rainfall
     const historicalUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}&daily=precipitation_sum&timezone=Asia/Kolkata`;
@@ -61,12 +62,18 @@ export const fetchRainfallData = async (lat: number, lon: number, days: number =
       fetch(forecastUrl)
     ]);
     
-    if (!historicalResponse.ok || !forecastResponse.ok) {
-      throw new Error('Failed to fetch weather data');
+    if (!historicalResponse.ok) {
+      throw new Error(`Historical weather API error: ${historicalResponse.status} ${historicalResponse.statusText}`);
+    }
+    
+    if (!forecastResponse.ok) {
+      throw new Error(`Forecast weather API error: ${forecastResponse.status} ${forecastResponse.statusText}`);
     }
     
     const historical = await historicalResponse.json();
     const forecast = await forecastResponse.json();
+    
+    console.log('Weather data fetched successfully:', { historical, forecast });
     
     return {
       historical: {
@@ -81,11 +88,11 @@ export const fetchRainfallData = async (lat: number, lon: number, days: number =
     };
   } catch (error) {
     console.error('Error fetching rainfall data:', error);
-    return null;
+    throw new Error(`Could not fetch weather data: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 
-// Fetch all reservoir data with pagination
+// Fetch all reservoir data with pagination and comprehensive error handling
 const fetchAllReservoirData = async (): Promise<ReservoirData[]> => {
   console.log('🔄 Fetching all reservoir data with pagination...');
   
@@ -109,7 +116,14 @@ const fetchAllReservoirData = async (): Promise<ReservoirData[]> => {
       
       if (error) {
         console.error(`❌ Error fetching page ${currentPage + 1}:`, error);
-        break;
+        if (currentPage === 0) {
+          // If first page fails, throw error
+          throw new Error(`Database error: ${error.message}`);
+        } else {
+          // If subsequent pages fail, break but keep existing data
+          console.warn('Partial data fetch - continuing with available data');
+          break;
+        }
       }
       
       if (!data || data.length === 0) {
@@ -126,6 +140,12 @@ const fetchAllReservoirData = async (): Promise<ReservoirData[]> => {
       }
       
       currentPage++;
+      
+      // Safety limit to prevent infinite loops
+      if (currentPage > 100) {
+        console.warn('Reached maximum page limit, stopping fetch');
+        break;
+      }
     }
     
     console.log(`🎉 Total records fetched: ${allData.length}`);
@@ -133,11 +153,11 @@ const fetchAllReservoirData = async (): Promise<ReservoirData[]> => {
     
   } catch (error) {
     console.error('💥 Critical error in pagination fetch:', error);
-    return [];
+    throw new Error(`Reservoir data fetch failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 
-// Fetch distinct states from Supabase
+// Fetch distinct states from Supabase with error handling
 export const fetchStatesFromReservoirs = async (): Promise<string[]> => {
   try {
     console.log('🗺️ Fetching distinct states from reservoirs...');
@@ -150,6 +170,11 @@ export const fetchStatesFromReservoirs = async (): Promise<string[]> => {
     
     if (error) {
       console.error('❌ Error fetching states:', error);
+      throw new Error(`Database error: ${error.message}`);
+    }
+    
+    if (!data || data.length === 0) {
+      console.warn('⚠️ No states found in database');
       return [];
     }
     
@@ -159,14 +184,18 @@ export const fetchStatesFromReservoirs = async (): Promise<string[]> => {
     
   } catch (error) {
     console.error('💥 Error fetching states:', error);
-    return [];
+    throw new Error(`Could not fetch states: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 
-// Fetch districts for a specific state
+// Fetch districts for a specific state with error handling
 export const fetchDistrictsForState = async (state: string): Promise<string[]> => {
   try {
     console.log(`🏘️ Fetching districts for state: ${state}`);
+    
+    if (!state || state.trim() === '') {
+      throw new Error('State parameter is required');
+    }
     
     const { data, error } = await supabase
       .from('indian_reservoir_levels')
@@ -177,6 +206,11 @@ export const fetchDistrictsForState = async (state: string): Promise<string[]> =
     
     if (error) {
       console.error('❌ Error fetching districts:', error);
+      throw new Error(`Database error: ${error.message}`);
+    }
+    
+    if (!data || data.length === 0) {
+      console.warn(`⚠️ No districts found for state: ${state}`);
       return [];
     }
     
@@ -186,13 +220,19 @@ export const fetchDistrictsForState = async (state: string): Promise<string[]> =
     
   } catch (error) {
     console.error('💥 Error fetching districts:', error);
-    return [];
+    throw new Error(`Could not fetch districts: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 
-// Get coordinates for a district
+// Get coordinates for a district with error handling
 export const getDistrictCoordinates = async (state: string, district: string): Promise<[number, number] | null> => {
   try {
+    console.log(`📍 Getting coordinates for ${district}, ${state}`);
+    
+    if (!state || !district) {
+      throw new Error('Both state and district parameters are required');
+    }
+    
     const { data, error } = await supabase
       .from('indian_reservoir_levels')
       .select('lat, long')
@@ -202,67 +242,100 @@ export const getDistrictCoordinates = async (state: string, district: string): P
       .not('long', 'is', null)
       .limit(1);
     
-    if (error || !data || data.length === 0) {
+    if (error) {
+      console.error('❌ Error fetching coordinates:', error);
+      throw new Error(`Database error: ${error.message}`);
+    }
+    
+    if (!data || data.length === 0) {
       console.warn(`⚠️ No coordinates found for ${district}, ${state}`);
       return null;
     }
     
-    return [data[0].lat, data[0].long];
+    const coords: [number, number] = [data[0].lat, data[0].long];
+    console.log(`✅ Coordinates found: ${coords[0]}, ${coords[1]}`);
+    return coords;
+    
   } catch (error) {
     console.error('💥 Error fetching coordinates:', error);
-    return null;
+    throw new Error(`Could not fetch coordinates: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 
-// Enhanced flood prediction logic
+// Enhanced flood prediction logic with error handling
 export const generateFloodPrediction = (
   reservoirData: ReservoirData[],
   rainfallData: any,
   coordinates: [number, number]
 ): { predictions: Array<{ date: string; probability: number; confidence: number }> } => {
-  const predictions = [];
-  
-  // Calculate base risk from reservoir data
-  let baseRisk = 0;
-  reservoirData.forEach(reservoir => {
-    const percentageFull = reservoir.percentage_full || 0;
-    const inflowRate = reservoir.inflow_cusecs || 0;
+  try {
+    console.log('🧠 Generating flood prediction...', { reservoirData: reservoirData.length, coordinates });
     
-    if (percentageFull > 90) baseRisk += 40;
-    else if (percentageFull > 80) baseRisk += 25;
-    else if (percentageFull > 70) baseRisk += 15;
+    const predictions = [];
     
-    if (inflowRate > 10000) baseRisk += 30;
-    else if (inflowRate > 5000) baseRisk += 20;
-  });
-  
-  // Generate 10-day predictions
-  for (let i = 0; i < 10; i++) {
-    const date = new Date();
-    date.setDate(date.getDate() + i);
-    
-    let probability = Math.min(95, baseRisk);
-    
-    // Factor in rainfall forecast if available
-    if (rainfallData?.forecast?.precipitation?.[i]) {
-      const rainfall = rainfallData.forecast.precipitation[i];
-      probability += Math.min(30, rainfall * 0.5);
+    // Calculate base risk from reservoir data
+    let baseRisk = 0;
+    if (reservoirData && reservoirData.length > 0) {
+      reservoirData.forEach(reservoir => {
+        const percentageFull = reservoir.percentage_full || 0;
+        const inflowRate = reservoir.inflow_cusecs || 0;
+        
+        if (percentageFull > 90) baseRisk += 40;
+        else if (percentageFull > 80) baseRisk += 25;
+        else if (percentageFull > 70) baseRisk += 15;
+        
+        if (inflowRate > 10000) baseRisk += 30;
+        else if (inflowRate > 5000) baseRisk += 20;
+      });
+    } else {
+      // Default base risk if no reservoir data
+      baseRisk = 15;
     }
     
-    // Decrease confidence over time
-    const confidence = Math.max(60, 95 - (i * 4));
+    // Generate 10-day predictions
+    for (let i = 0; i < 10; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() + i);
+      
+      let probability = Math.min(95, baseRisk);
+      
+      // Factor in rainfall forecast if available
+      if (rainfallData?.forecast?.precipitation?.[i] !== undefined) {
+        const rainfall = rainfallData.forecast.precipitation[i];
+        probability += Math.min(30, rainfall * 0.5);
+      }
+      
+      // Decrease confidence over time
+      const confidence = Math.max(60, 95 - (i * 4));
+      
+      predictions.push({
+        date: date.toISOString().split('T')[0],
+        probability: Math.round(Math.min(95, Math.max(5, probability))),
+        confidence: Math.round(confidence)
+      });
+    }
     
-    predictions.push({
-      date: date.toISOString().split('T')[0],
-      probability: Math.round(Math.min(95, Math.max(5, probability))),
-      confidence: Math.round(confidence)
-    });
+    console.log('✅ Flood prediction generated successfully');
+    return { predictions };
+    
+  } catch (error) {
+    console.error('💥 Error generating flood prediction:', error);
+    // Return default prediction in case of error
+    const defaultPredictions = [];
+    for (let i = 0; i < 10; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() + i);
+      defaultPredictions.push({
+        date: date.toISOString().split('T')[0],
+        probability: 20,
+        confidence: 70
+      });
+    }
+    return { predictions: defaultPredictions };
   }
-  
-  return { predictions };
 };
 
-// Main API service using enhanced pagination
+// Main API service using enhanced pagination and error handling
 export const imdApiService = {
   fetchFloodData: async (): Promise<IMDRegionData[]> => {
     console.log('🚀 Starting enhanced flood data fetch...');
@@ -272,8 +345,20 @@ export const imdApiService = {
       const reservoirs = await fetchAllReservoirData();
       
       if (!reservoirs || reservoirs.length === 0) {
-        console.warn('⚠️ No reservoir data found');
-        return [];
+        console.warn('⚠️ No reservoir data found, using default regions');
+        
+        // Return default regions if no reservoir data
+        return regions.map(region => ({
+          state: region.state,
+          district: region.label,
+          rainfall: 0,
+          floodRiskLevel: 'low' as const,
+          populationAffected: 0,
+          affectedArea: 0,
+          coordinates: region.coordinates && region.coordinates.length >= 2 
+            ? [region.coordinates[0], region.coordinates[1]] as [number, number]
+            : [0, 0] as [number, number],
+        }));
       }
 
       console.log(`📊 Processing ${reservoirs.length} reservoir records...`);
@@ -300,69 +385,74 @@ export const imdApiService = {
 
       // Process all reservoir data
       for (const res of reservoirs) {
-        const regionName = res.district || res.state || 'unknown';
-        const lowerRegionName = regionName.toLowerCase();
+        try {
+          const regionName = res.district || res.state || 'unknown';
+          const lowerRegionName = regionName.toLowerCase();
 
-        const predefinedRegion = regions.find(r =>
-          r.label.toLowerCase() === lowerRegionName || r.state.toLowerCase() === lowerRegionName
-        );
-        
-        const currentRegionLabel = predefinedRegion ? predefinedRegion.label : regionName;
-        const currentRegionState = predefinedRegion ? predefinedRegion.state : (res.state || 'Unknown');
+          const predefinedRegion = regions.find(r =>
+            r.label.toLowerCase() === lowerRegionName || r.state.toLowerCase() === lowerRegionName
+          );
+          
+          const currentRegionLabel = predefinedRegion ? predefinedRegion.label : regionName;
+          const currentRegionState = predefinedRegion ? predefinedRegion.state : (res.state || 'Unknown');
 
-        let regionEntry = regionDataMap.get(currentRegionLabel.toLowerCase());
-        if (!regionEntry) {
-          const fallbackCoordinates: [number, number] = [res.lat || 0, res.long || 0];
-          regionEntry = {
-            state: currentRegionState,
-            district: currentRegionLabel,
-            rainfall: 0,
-            floodRiskLevel: 'low',
-            populationAffected: 0,
-            affectedArea: 0,
-            coordinates: fallbackCoordinates,
-          };
-          regionDataMap.set(currentRegionLabel.toLowerCase(), regionEntry);
-        }
-
-        // Enhanced risk calculation
-        const percentageFull = res.percentage_full || 0;
-        const inflowCusecs = res.inflow_cusecs || 0;
-        const outflowCusecs = res.outflow_cusecs || 0;
-
-        const currentRainfallProxy = Math.floor(percentageFull * 3);
-        if (currentRainfallProxy > regionEntry.rainfall) {
-          regionEntry.rainfall = currentRainfallProxy;
-        }
-
-        // Determine flood risk level
-        let riskLevel: IMDRegionData['floodRiskLevel'] = 'low';
-        if (percentageFull > 90 || inflowCusecs > 10000) {
-          riskLevel = 'severe';
-        } else if (percentageFull > 80 || inflowCusecs > 5000) {
-          riskLevel = 'high';
-        } else if (percentageFull > 70 || inflowCusecs > 1000) {
-          riskLevel = 'medium';
-        }
-
-        const riskLevelOrder = { 'low': 0, 'medium': 1, 'high': 2, 'severe': 3 };
-        if (riskLevelOrder[riskLevel] > riskLevelOrder[regionEntry.floodRiskLevel]) {
-          regionEntry.floodRiskLevel = riskLevel;
-        }
-
-        // Enhanced river data
-        if (res.reservoir_name) {
-          if (!regionEntry.riverData || (res.current_level_mcm && res.current_level_mcm > (regionEntry.riverData.currentLevel || 0))) {
-            regionEntry.riverData = {
-              name: res.reservoir_name,
-              currentLevel: res.current_level_mcm || 0,
-              dangerLevel: res.capacity_mcm ? res.capacity_mcm * 0.95 : 7.5,
-              warningLevel: res.capacity_mcm ? res.capacity_mcm * 0.85 : 6.0,
-              normalLevel: res.capacity_mcm ? res.capacity_mcm * 0.5 : 3.5,
-              trend: (inflowCusecs > outflowCusecs) ? 'rising' : (outflowCusecs > inflowCusecs ? 'falling' : 'stable'),
-              lastUpdated: res.last_updated || new Date().toISOString()
+          let regionEntry = regionDataMap.get(currentRegionLabel.toLowerCase());
+          if (!regionEntry) {
+            const fallbackCoordinates: [number, number] = [res.lat || 0, res.long || 0];
+            regionEntry = {
+              state: currentRegionState,
+              district: currentRegionLabel,
+              rainfall: 0,
+              floodRiskLevel: 'low',
+              populationAffected: 0,
+              affectedArea: 0,
+              coordinates: fallbackCoordinates,
             };
+            regionDataMap.set(currentRegionLabel.toLowerCase(), regionEntry);
           }
+
+          // Enhanced risk calculation
+          const percentageFull = res.percentage_full || 0;
+          const inflowCusecs = res.inflow_cusecs || 0;
+          const outflowCusecs = res.outflow_cusecs || 0;
+
+          const currentRainfallProxy = Math.floor(percentageFull * 3);
+          if (currentRainfallProxy > regionEntry.rainfall) {
+            regionEntry.rainfall = currentRainfallProxy;
+          }
+
+          // Determine flood risk level
+          let riskLevel: IMDRegionData['floodRiskLevel'] = 'low';
+          if (percentageFull > 90 || inflowCusecs > 10000) {
+            riskLevel = 'severe';
+          } else if (percentageFull > 80 || inflowCusecs > 5000) {
+            riskLevel = 'high';
+          } else if (percentageFull > 70 || inflowCusecs > 1000) {
+            riskLevel = 'medium';
+          }
+
+          const riskLevelOrder = { 'low': 0, 'medium': 1, 'high': 2, 'severe': 3 };
+          if (riskLevelOrder[riskLevel] > riskLevelOrder[regionEntry.floodRiskLevel]) {
+            regionEntry.floodRiskLevel = riskLevel;
+          }
+
+          // Enhanced river data
+          if (res.reservoir_name) {
+            if (!regionEntry.riverData || (res.current_level_mcm && res.current_level_mcm > (regionEntry.riverData.currentLevel || 0))) {
+              regionEntry.riverData = {
+                name: res.reservoir_name,
+                currentLevel: res.current_level_mcm || 0,
+                dangerLevel: res.capacity_mcm ? res.capacity_mcm * 0.95 : 7.5,
+                warningLevel: res.capacity_mcm ? res.capacity_mcm * 0.85 : 6.0,
+                normalLevel: res.capacity_mcm ? res.capacity_mcm * 0.5 : 3.5,
+                trend: (inflowCusecs > outflowCusecs) ? 'rising' : (outflowCusecs > inflowCusecs ? 'falling' : 'stable'),
+                lastUpdated: res.last_updated || new Date().toISOString()
+              };
+            }
+          }
+        } catch (error) {
+          console.error(`Error processing reservoir record:`, error, res);
+          // Continue processing other records
         }
       }
 
@@ -372,7 +462,19 @@ export const imdApiService = {
 
     } catch (error) {
       console.error('💥 Critical error in enhanced flood data fetch:', error);
-      return [];
+      
+      // Return default regions as fallback
+      return regions.map(region => ({
+        state: region.state,
+        district: region.label,
+        rainfall: 0,
+        floodRiskLevel: 'low' as const,
+        populationAffected: 0,
+        affectedArea: 0,
+        coordinates: region.coordinates && region.coordinates.length >= 2 
+          ? [region.coordinates[0], region.coordinates[1]] as [number, number]
+          : [0, 0] as [number, number],
+      }));
     }
   }
 };

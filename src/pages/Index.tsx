@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
@@ -18,6 +17,8 @@ import CursorAiIndicator from '../components/CursorAiIndicator';
 
 const Index = () => {
   const [selectedRegion, setSelectedRegion] = useState('mumbai');
+  const [selectedState, setSelectedState] = useState<string>('');
+  const [selectedDistrict, setSelectedDistrict] = useState<string>('');
   const [locationData, setLocationData] = useState<any>(null);
   const [lastUpdateTime, setLastUpdateTime] = useState<Date>(new Date());
   const [nextUpdateTime, setNextUpdateTime] = useState<Date>(new Date(Date.now() + 12 * 60 * 60 * 1000));
@@ -45,13 +46,35 @@ const Index = () => {
   const enhancedFloodData = floodDataForRegion ? 
     updateFloodDataWithReservoirs([floodDataForRegion])[0] : null;
 
-  // Handle location data from RegionSelector
+  // Handle location data from RegionSelector with reactive updates
   const handleLocationData = useCallback((data: { coordinates: [number, number], rainfall: any }) => {
     setLocationData(data);
     console.log('Location data updated:', data);
+    
+    // Trigger reactive updates for dependent components
+    setDataFreshness('fresh');
+    
+    // Update the last update time to reflect new data
+    setLastUpdateTime(new Date());
   }, []);
 
-  // Data fetching function
+  // Handle region change and extract state/district info
+  const handleRegionChange = useCallback((region: string) => {
+    setSelectedRegion(region);
+  }, []);
+
+  // Update state and district from RegionSelector
+  const handleRegionSelectorChange = useCallback((regionData: { 
+    selectedState: string; 
+    selectedDistrict: string; 
+    selectedRegion: string;
+  }) => {
+    setSelectedState(regionData.selectedState);
+    setSelectedDistrict(regionData.selectedDistrict);
+    setSelectedRegion(regionData.selectedRegion);
+  }, []);
+
+  // Data fetching function with error handling
   const loadFloodData = useCallback(async (forceRefresh = false) => {
     const currentState = forceRefresh ? 'updating' : dataFreshness;
     setDataFreshness(currentState);
@@ -88,7 +111,7 @@ const Index = () => {
       console.error("Error loading data:", error);
       toast({
         title: forceRefresh ? "Refresh Failed" : "Error Loading Data",
-        description: "Could not fetch the latest flood and reservoir data",
+        description: "Could not fetch the latest flood and reservoir data. Please try again.",
         variant: "destructive",
         duration: 5000,
       });
@@ -112,9 +135,14 @@ const Index = () => {
     }
   }, [reservoirLoading, updateFloodDataWithReservoirs]);
 
-  const handleRegionChange = (region: string) => {
-    setSelectedRegion(region);
-  };
+  // Reactive updates when location data changes
+  useEffect(() => {
+    if (locationData) {
+      console.log('Triggering reactive updates for location data:', locationData);
+      // Force re-render of dependent components
+      setLastUpdateTime(new Date());
+    }
+  }, [locationData]);
   
   const handleManualRefresh = async () => {
     if (isRefreshing) return;
@@ -220,7 +248,9 @@ const Index = () => {
         {/* Map positioned between selector and controls */}
         <div className="mb-6">
           <Map 
-            selectedRegion={selectedRegion} 
+            selectedRegion={selectedRegion}
+            selectedState={selectedState}
+            selectedDistrict={selectedDistrict}
             className="w-full"
             aspectRatio={16/9}
           />
@@ -292,66 +322,88 @@ const Index = () => {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-              <div className="lg:col-span-2 space-y-6">
-                <FloodStats floodData={enhancedFloodData} />
+            {/* Clean Grid Layout for 4 Main Panels */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              {/* Location Information & Current Conditions */}
+              <div className="space-y-6">
+                {enhancedFloodData ? (
+                  <FloodStats floodData={enhancedFloodData} />
+                ) : (
+                  <div className="bg-white rounded-lg border p-6">
+                    <h2 className="text-lg font-semibold mb-2">Location Information</h2>
+                    <p className="text-gray-500">No flood data available for selected region.</p>
+                  </div>
+                )}
+                
+                {enhancedFloodData ? (
+                  <PredictionCard floodData={enhancedFloodData} />
+                ) : (
+                  <div className="bg-white rounded-lg border p-6">
+                    <h2 className="text-lg font-semibold mb-2">Current Conditions</h2>
+                    <p className="text-gray-500">Loading current conditions...</p>
+                  </div>
+                )}
+              </div>
+              
+              {/* Historical Rainfall & AI Flood Forecast */}
+              <div className="space-y-6">
                 <ChartSection 
                   selectedRegion={selectedRegion} 
                   locationData={locationData}
                 />
-                <PredictionCard floodData={enhancedFloodData} />
               </div>
+            </div>
+            
+            {/* Information Panel */}
+            <div className="bg-white rounded-lg border p-6 mb-6">
+              <h2 className="text-lg font-medium mb-4">Flood Risk Information</h2>
               
-              <div className="lg:col-span-1">
-                <div className="sticky top-6 bg-white p-4 rounded-lg shadow">
-                  <h2 className="text-lg font-medium mb-2">Flood Risk Information</h2>
-                  
-                  {reservoirCount > 0 && (
-                    <div className="mb-4 p-2 bg-blue-50 rounded">
-                      <p className="text-xs text-blue-700 font-medium">
-                        ✓ Live Data Active
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {reservoirCount > 0 && (
+                  <div className="p-4 bg-blue-50 rounded-lg">
+                    <p className="text-sm text-blue-700 font-medium">
+                      ✓ Live Data Active
+                    </p>
+                    <p className="text-xs text-blue-600">
+                      Analyzing {reservoirCount} reservoir conditions in real-time
+                    </p>
+                    {reservoirLastUpdated && (
+                      <p className="text-xs text-blue-500 mt-1">
+                        Last sync: {reservoirLastUpdated.toLocaleTimeString()}
                       </p>
-                      <p className="text-xs text-blue-600">
-                        Analyzing {reservoirCount} reservoir conditions in real-time
-                      </p>
-                      {reservoirLastUpdated && (
-                        <p className="text-xs text-blue-500 mt-1">
-                          Last sync: {reservoirLastUpdated.toLocaleTimeString()}
-                        </p>
-                      )}
+                    )}
+                  </div>
+                )}
+                
+                {locationData?.rainfall && (
+                  <div className="p-4 bg-green-50 rounded-lg">
+                    <p className="text-sm text-green-700 font-medium">
+                      ✓ Weather Data Loaded
+                    </p>
+                    <p className="text-xs text-green-600">
+                      Historical and forecast rainfall data available
+                    </p>
+                  </div>
+                )}
+                
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <h3 className="text-sm font-medium mb-2">Risk Levels</h3>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="flex items-center">
+                      <span className="w-3 h-3 bg-green-500 rounded-full mr-1"></span>
+                      <span>Low Risk</span>
                     </div>
-                  )}
-                  
-                  {locationData?.rainfall && (
-                    <div className="mb-4 p-2 bg-green-50 rounded">
-                      <p className="text-xs text-green-700 font-medium">
-                        ✓ Weather Data Loaded
-                      </p>
-                      <p className="text-xs text-green-600">
-                        Historical and forecast rainfall data available
-                      </p>
+                    <div className="flex items-center">
+                      <span className="w-3 h-3 bg-yellow-500 rounded-full mr-1"></span>
+                      <span>Medium Risk</span>
                     </div>
-                  )}
-                  
-                  <div className="mt-4">
-                    <h3 className="text-sm font-medium mb-2">Risk Levels</h3>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="flex items-center">
-                        <span className="w-3 h-3 bg-green-500 rounded-full mr-1"></span>
-                        <span>Low Risk</span>
-                      </div>
-                      <div className="flex items-center">
-                        <span className="w-3 h-3 bg-yellow-500 rounded-full mr-1"></span>
-                        <span>Medium Risk</span>
-                      </div>
-                      <div className="flex items-center">
-                        <span className="w-3 h-3 bg-orange-500 rounded-full mr-1"></span>
-                        <span>High Risk</span>
-                      </div>
-                      <div className="flex items-center">
-                        <span className="w-3 h-3 bg-red-500 rounded-full mr-1"></span>
-                        <span>Severe Risk</span>
-                      </div>
+                    <div className="flex items-center">
+                      <span className="w-3 h-3 bg-orange-500 rounded-full mr-1"></span>
+                      <span>High Risk</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="w-3 h-3 bg-red-500 rounded-full mr-1"></span>
+                      <span>Severe Risk</span>
                     </div>
                   </div>
                 </div>
