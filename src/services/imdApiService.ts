@@ -34,6 +34,44 @@ export type IMDRegionData = {
   affectedArea: number;       
   coordinates: [number, number]; // Representative coordinates for the district
   lastUpdated: string;           // Most recent last_updated for any reservoir in the district
+  // Optional properties for compatibility with FloodData interface
+  riverData?: {
+    name: string;
+    currentLevel: number;
+    dangerLevel: number;
+    warningLevel: number;
+    normalLevel: number;
+    trend: 'rising' | 'falling' | 'stable';
+    source: {
+      name: string;
+      url: string;
+      type?: string;
+    }
+  };
+  predictedFlood?: {
+    date: string;
+    probabilityPercentage: number;
+    timestamp?: string;
+    predictedEvent?: string;
+    predictedLocation?: string;
+    timeframe?: string;
+    supportingData?: string;
+    expectedRainfall?: number;
+    expectedRiverRise?: number;
+    source?: {
+      name: string;
+      url: string;
+      type?: string;
+    }
+  };
+  activeWarnings?: {
+    type: 'severe' | 'warning' | 'alert' | 'watch';
+    issuedBy: string;
+    issuedAt: string;
+    validUntil: string;
+    message: string;
+    sourceUrl: string;
+  }[];
 };
 
 // Define the maximum number of records to fetch per Supabase request to enable pagination
