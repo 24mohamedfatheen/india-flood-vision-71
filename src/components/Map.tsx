@@ -23,11 +23,7 @@ const Map: React.FC<{
     <div className={`relative w-full ${className}`}>
       <AspectRatio ratio={aspectRatio} className="w-full">
         <div className="w-full h-full">
-          <FloodMap 
-            selectedState={selectedState}
-            selectedDistrict={selectedDistrict}
-            className="w-full h-full"
-          />
+          <FloodMap />
         </div>
       </AspectRatio>
       
