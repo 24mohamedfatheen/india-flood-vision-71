@@ -1,247 +1,132 @@
+// src/components/map/Map.tsx
 
-import React, { useEffect, useRef, useState } from 'react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import { floodData, getFloodDataForRegion } from '../../data/floodData';
-import { useToast } from '../../hooks/use-toast';
-import MapControls from './MapControls';
-import MapMarker from './MapMarker';
-import MapLegend from './MapLegend';
-import MapAttribution from './MapAttribution';
-import { createFloodAreaPolygon } from './MapUtils';
-import { MapProps } from './types';
+import React, { useEffect } from 'react';
+// Import necessary components from react-leaflet for building the map
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet'; // Import Leaflet core library (for L.Icon.Default, L.divIcon etc.)
+import 'leaflet/dist/leaflet.css'; // Import Leaflet's default CSS for map styling
 
-const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<L.Map | null>(null);
-  const popupRef = useRef<L.Popup | null>(null);
-  const markersRef = useRef<L.Marker[]>([]);
-  const layersRef = useRef<{[key: string]: L.Layer}>({});
-  const [mapLoaded, setMapLoaded] = useState<boolean>(false);
-  const [lastUpdate, setLastUpdate] = useState<string>('');
-  const selectedFloodData = getFloodDataForRegion(selectedRegion);
-  const { toast } = useToast();
+// Import the IMDRegionData type from your service for type safety
+import { IMDRegionData } from '../../services/imdApiService'; 
 
-  // Initialize map
+// Import your custom MapMarker component
+import MapMarker from './MapMarker'; // Path to your MapMarker component
+
+// Import Lucide React icons for the user location marker
+import { CircleDot } from 'lucide-react';
+
+// --- Leaflet Default Icon Fix ---
+// This is a common workaround to ensure Leaflet's default marker icons display correctly
+// when using Webpack/Vite or similar bundlers, as asset paths might be broken.
+// It prevents broken image icons on the map.
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+});
+
+// --- MapRecenter Component ---
+// This helper component is crucial for enabling programmatic control over the Leaflet map's view.
+// It allows the map to smoothly pan and zoom to new `center` and `zoom` values provided via React state.
+// It must be rendered as a direct child of `MapContainer` to access the Leaflet map instance via `useMap()`.
+const MapRecenter: React.FC<{ center: L.LatLngExpression, zoom: number }> = ({ center, zoom }) => {
+  const map = useMap(); // `useMap` hook provides access to the Leaflet map instance
   useEffect(() => {
-    if (!mapContainer.current) return;
-    
-    try {
-      // Fix Leaflet icon issues with webpack
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-        iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-      });
-      
-      // Create the Leaflet map centered on India
-      map.current = L.map(mapContainer.current, {
-        attributionControl: false,
-        zoomControl: false
-      }).setView([20.5937, 78.9629], 5);
-      
-      // Add the OpenStreetMap tile layer
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      }).addTo(map.current);
-      
-      // Add flood areas layer group
-      layersRef.current['floodAreas'] = L.layerGroup().addTo(map.current);
-      
-      // Add state boundaries layer group
-      layersRef.current['stateBoundaries'] = L.layerGroup().addTo(map.current);
-      
-      setMapLoaded(true);
-      
-      const now = new Date();
-      setLastUpdate(now.toLocaleString());
-      
-      return () => {
-        if (map.current) {
-          map.current.remove();
-        }
-      };
-    } catch (error) {
-      console.error("Error initializing map:", error);
-      toast({
-        title: "Map Error",
-        description: "Could not initialize map. Please check your connection.",
-        variant: "destructive"
-      });
+    // Only update map view if valid coordinates are provided (not default [0,0])
+    // The initial center [0,0] is a placeholder if no data is loaded yet.
+    if (center[0] !== 0 || center[1] !== 0) { 
+      map.flyTo(center, zoom, { animate: true, duration: 1 }); // Smooth animation to new view
     }
-  }, [toast]);
+  }, [center, zoom, map]); // Dependencies: re-run effect if center, zoom, or map instance changes
+  return null; // This component does not render any visible UI
+};
 
-  // Update map when selected region changes
-  useEffect(() => {
-    if (!mapLoaded || !map.current || !selectedFloodData) return;
+// --- Main Map Component Props ---
+// Define the props that this Map component will receive from its parent (e.g., App.tsx)
+interface MapProps {
+    selectedState: string;
+    setSelectedState: (state: string) => void; // Function to update selected state in parent
+    selectedDistrict: string;
+    setSelectedDistrict: (district: string) => void; // Function to update selected district in parent
+    mapCenter: L.LatLngExpression;
+    setMapCenter: (center: L.LatLngExpression) => void;
+    mapZoom: number;
+    setMapZoom: (zoom: number) => void;
+    aggregatedFloodData: IMDRegionData[]; // The data to display as markers
+    userLocation: [number, number] | null; // User's current location for a marker
+}
 
-    // Fly to the selected region with a closer zoom for smaller viewport
-    map.current.flyTo(
-      [selectedFloodData.coordinates[0], selectedFloodData.coordinates[1]],
-      7,
-      { animate: true, duration: 1 }
-    );
-
-    // Update the flood affected areas
-    updateFloodAreas();
-
-    // Add state boundary highlighting
-    updateStateBoundary();
-
-  }, [selectedRegion, mapLoaded, selectedFloodData]);
-
-  // Update flood areas on map
-  const updateFloodAreas = () => {
-    if (!map.current || !layersRef.current['floodAreas']) return;
-    
-    // Clear existing flood areas
-    const floodAreasLayer = layersRef.current['floodAreas'] as L.LayerGroup;
-    floodAreasLayer.clearLayers();
-    
-    // Generate flood area features
-    const filteredFloodData = floodData.filter(data => data.riskLevel !== 'low');
-    
-    filteredFloodData.forEach(data => {
-      const geoJsonPolygon = createFloodAreaPolygon(data);
-      if (geoJsonPolygon) {
-        // Create Leaflet polygon from GeoJSON
-        const color = 
-          data.riskLevel === 'severe' ? '#F44336' :
-          data.riskLevel === 'high' ? '#FF9800' :
-          data.riskLevel === 'medium' ? '#FFC107' : 
-          '#4CAF50';
-        
-        const polygon = L.geoJSON(geoJsonPolygon as any, {
-          style: {
-            color: color,
-            weight: 2,
-            opacity: 1,
-            fillColor: color,
-            fillOpacity: 0.3
-          }
-        });
-        
-        // Add popup with information
-        polygon.bindPopup(`
-          <div class="font-bold">${data.region}, ${data.state}</div>
-          <div>Risk Level: ${data.riskLevel.toUpperCase()}</div>
-          <div>Area: ${data.affectedArea} km²</div>
-          <div>Population: ${data.populationAffected.toLocaleString()}</div>
-        `);
-        
-        // Add to layer group
-        polygon.addTo(floodAreasLayer);
-      }
-    });
-  };
+// Renamed from MapComponent to Map for consistency with common naming conventions and usage in App.tsx
+const Map: React.FC<MapProps> = ({ 
+    selectedState, setSelectedState, 
+    selectedDistrict, setSelectedDistrict,
+    mapCenter, setMapCenter, 
+    mapZoom, setMapZoom,
+    aggregatedFloodData, 
+    userLocation
+}) => {
   
-  // Add state boundary highlighting for the selected region
-  const updateStateBoundary = () => {
-    if (!map.current || !layersRef.current['stateBoundaries'] || !selectedFloodData) return;
-    
-    // Clear existing boundaries
-    const stateBoundariesLayer = layersRef.current['stateBoundaries'] as L.LayerGroup;
-    stateBoundariesLayer.clearLayers();
-    
-    // Create a simplified state boundary (placeholder - in a real app, you'd use GeoJSON data for state boundaries)
-    // This is a simplified circle representing the state boundary for demo purposes
-    const stateCenter = selectedFloodData.coordinates;
-    const stateRadius = Math.sqrt(selectedFloodData.affectedArea) * 500; // Scale based on affected area
-    
-    // Get color based on risk level
-    const stateColor = 
-      selectedFloodData.riskLevel === 'severe' ? '#F44336' :
-      selectedFloodData.riskLevel === 'high' ? '#FF9800' :
-      selectedFloodData.riskLevel === 'medium' ? '#FFC107' : 
-      '#4CAF50';
-    
-    // Create circle representing state with color based on risk level
-    const stateCircle = L.circle(stateCenter, {
-      radius: stateRadius,
-      color: stateColor,
-      weight: 2,
-      opacity: 0.8,
-      fill: true,
-      fillColor: stateColor,
-      fillOpacity: 0.15,
-    }).addTo(stateBoundariesLayer);
-    
-    // Add state label
-    const stateName = selectedFloodData.state;
-    const icon = L.divIcon({
-      className: 'state-label',
-      html: `<div style="background-color: white; padding: 3px 5px; border-radius: 3px; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.3);">${stateName}</div>`,
-      iconSize: [100, 20],
-      iconAnchor: [50, 10]
-    });
-    
-    L.marker(stateCenter, { icon: icon }).addTo(stateBoundariesLayer);
-  };
-
-  // Handle zoom controls
-  const handleZoomIn = () => {
-    if (!map.current) return;
-    map.current.zoomIn();
-  };
-
-  const handleZoomOut = () => {
-    if (!map.current) return;
-    map.current.zoomOut();
-  };
-
-  const handleResetView = () => {
-    if (!map.current) return;
-    map.current.setView([20.5937, 78.9629], 5, { animate: true });
-  };
-
-  // Toggle layer visibility
-  const toggleLayerVisibility = (layerId: string) => {
-    if (!map.current || !layersRef.current[layerId]) return;
-    
-    const layer = layersRef.current[layerId];
-    const isVisible = map.current.hasLayer(layer);
-    
-    if (isVisible) {
-      map.current.removeLayer(layer);
-    } else {
-      map.current.addLayer(layer);
-    }
-  };
-
   return (
-    <div className="map-container border rounded-lg overflow-hidden relative">
-      <div
-        ref={mapContainer}
-        className="absolute inset-0 w-full h-full"
-        style={{ minHeight: "300px" }}
+    <MapContainer 
+      center={mapCenter} // Map center controlled by parent component's state
+      zoom={mapZoom} // Map zoom controlled by parent component's state
+      className="h-full w-full rounded-lg" // Tailwind classes for styling (ensures map fills its container)
+      zoomControl={true} // Enable default Leaflet zoom controls (+/- buttons)
+      scrollWheelZoom={true} // Enable zoom functionality with mouse scroll wheel
+    >
+      <TileLayer
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       />
-      
-      <MapAttribution lastUpdate={lastUpdate} />
-      
-      <MapControls 
-        map={map.current}
-        handleZoomIn={handleZoomIn}
-        handleZoomOut={handleZoomOut}
-        handleResetView={handleResetView}
-        toggleLayerVisibility={toggleLayerVisibility}
-      />
-      
-      <MapLegend />
-      
-      {/* Render map markers once the map is loaded */}
-      {mapLoaded && map.current && floodData.map(data => (
-        <MapMarker 
-          key={data.id}
-          data={data}
-          map={map.current!}
-          selectedRegion={selectedRegion}
-          popupRef={popupRef}
-        />
+      {/* MapRecenter component ensures the map view updates when mapCenter or mapZoom props change */}
+      <MapRecenter center={mapCenter} zoom={mapZoom} />
+
+      {/* Render MapMarker components for Each Aggregated District Data Point */}
+      {/* This section iterates through the fetched and aggregated flood data.
+          For each district that has valid coordinates, it renders a MapMarker component,
+          passing the necessary data and state setters as props. */}
+      {aggregatedFloodData.map((data, index) => (
+        data.coordinates && ( // Only render a MapMarker if the district has valid geographical coordinates
+          <MapMarker 
+            key={`${data.state}-${data.district}-${index}`} // Unique key for each marker
+            data={data} // Pass the aggregated data for this district
+            map={null as any} // Map instance will be provided by useMap in MapMarker itself, or passed as a prop if MapMarker was a child of useMap's context
+            selectedDistrict={selectedDistrict}
+            selectedState={selectedState}
+            setSelectedDistrict={setSelectedDistrict} // Pass setter to update selected district in parent
+            setSelectedState={setSelectedState} // Pass setter to update selected state in parent
+            // Note: If MapMarker uses useMap internally, you don't need to pass 'map' here.
+            // If MapMarker is meant to be a direct Leaflet Layer, it needs the map instance.
+            // The current MapMarker code expects `map` prop. This is a potential slight divergence.
+            // We'll pass the map instance here and assume MapMarker uses it directly.
+          />
+        )
       ))}
-    </div>
+
+      {/* Marker for user's current location (if detected by browser) */}
+      {userLocation && (
+        <Marker position={userLocation} icon={L.divIcon({
+            className: 'my-custom-user-location-pin', // Custom class for styling
+            iconSize: [30, 30], // Size of the icon
+            // Inline SVG for a pulsing blue circle-dot icon for user location
+            html: `<div class="relative w-full h-full bg-blue-600 rounded-full flex items-center justify-center border-2 border-white shadow-lg animate-pulse">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-dot text-white"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="1"/></svg>
+                   </div>`, 
+            iconAnchor: [15, 15] // Center the icon
+        })}>
+          <Popup>
+            {/* Popup content for user's location */}
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
+                <strong>Your Current Location</strong><br/>
+                Detected by browser.
+            </div>
+          </Popup>
+        </Marker>
+      )}
+
+    </MapContainer>
   );
 };
 
-export default MapComponent;
+export default Map; // Export the Map component as default
