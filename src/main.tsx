@@ -34,9 +34,7 @@ if (selectedLang) {
   document.documentElement.setAttribute('dir', 'ltr');
 }
 
-// Create root with StrictMode to ensure proper React context
-createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+console.log('main.tsx: Initializing React app');
+
+// Create root without StrictMode to avoid potential context issues
+createRoot(document.getElementById("root")!).render(<App />);
