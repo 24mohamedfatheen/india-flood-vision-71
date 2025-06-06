@@ -14,11 +14,11 @@ import { useToast } from '../hooks/use-toast';
 import { Clock, RefreshCw, AlertTriangle, LogIn, LogOut, Database } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../context/AuthContext';
-import { Skeleton } from '../components/ui/skeleton';
 import CursorAiIndicator from '../components/CursorAiIndicator';
 
 const Index = () => {
   const [selectedRegion, setSelectedRegion] = useState('mumbai');
+  const [locationData, setLocationData] = useState<any>(null);
   const [lastUpdateTime, setLastUpdateTime] = useState<Date>(new Date());
   const [nextUpdateTime, setNextUpdateTime] = useState<Date>(new Date(Date.now() + 12 * 60 * 60 * 1000));
   const [dataFreshness, setDataFreshness] = useState<'fresh' | 'stale' | 'updating'>('updating');
@@ -31,7 +31,7 @@ const Index = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   
-  // Use the new reservoir flood data hook
+  // Use the reservoir flood data hook
   const { 
     isLoading: reservoirLoading, 
     error: reservoirError, 
@@ -40,12 +40,18 @@ const Index = () => {
     reservoirCount
   } = useReservoirFloodData();
 
-  // Get current region's flood data (now enhanced with live reservoir data)
+  // Get current region's flood data
   const floodDataForRegion = getFloodDataForRegion(selectedRegion);
   const enhancedFloodData = floodDataForRegion ? 
     updateFloodDataWithReservoirs([floodDataForRegion])[0] : null;
 
-  // Improved data fetching function with consistency handling
+  // Handle location data from RegionSelector
+  const handleLocationData = useCallback((data: { coordinates: [number, number], rainfall: any }) => {
+    setLocationData(data);
+    console.log('Location data updated:', data);
+  }, []);
+
+  // Data fetching function
   const loadFloodData = useCallback(async (forceRefresh = false) => {
     const currentState = forceRefresh ? 'updating' : dataFreshness;
     setDataFreshness(currentState);
@@ -57,7 +63,6 @@ const Index = () => {
     try {
       await fetchImdData(forceRefresh);
       
-      // Update flood data with reservoir information
       const updatedFloodData = updateFloodDataWithReservoirs(floodData);
       setCurrentFloodData(updatedFloodData);
       
@@ -111,26 +116,24 @@ const Index = () => {
     setSelectedRegion(region);
   };
   
-  // Improved manual refresh handler
   const handleManualRefresh = async () => {
-    if (isRefreshing) return; // Prevent multiple concurrent refreshes
+    if (isRefreshing) return;
     
     console.log('Manual refresh triggered');
     await loadFloodData(true);
   };
   
-  // Set up data refresh every 12 hours
+  // Auto-refresh setup
   useEffect(() => {
     const updateInterval = setInterval(() => {
       loadFloodData(true);
-    }, 12 * 60 * 60 * 1000); // 12 hours in milliseconds
+    }, 12 * 60 * 60 * 1000);
     
-    // For demo purposes, add a shorter interval to simulate updates
     if (process.env.NODE_ENV === 'development') {
       console.log('Development mode: adding demo interval');
       const demoInterval = setTimeout(() => {
         loadFloodData(true);
-      }, 60000); // 1 minute for demo
+      }, 60000);
       
       return () => {
         clearInterval(updateInterval);
@@ -141,7 +144,7 @@ const Index = () => {
     return () => clearInterval(updateInterval);
   }, [loadFloodData]);
 
-  // Check if data is stale (over 12 hours old)
+  // Check data freshness
   useEffect(() => {
     const checkFreshness = () => {
       const now = new Date();
@@ -152,11 +155,8 @@ const Index = () => {
       }
     };
     
-    // Check freshness initially
     checkFreshness();
-    
-    // Set up interval to check freshness every minute
-    const freshnessInterval = setInterval(checkFreshness, 60000); // 1 minute
+    const freshnessInterval = setInterval(checkFreshness, 60000);
     
     return () => clearInterval(freshnessInterval);
   }, [lastUpdateTime]);
@@ -210,13 +210,14 @@ const Index = () => {
           </div>
         </div>
         
-        {/* Region Selector first */}
+        {/* Enhanced Region Selector with location data callback */}
         <RegionSelector 
           selectedRegion={selectedRegion}
           onRegionChange={handleRegionChange}
+          onLocationData={handleLocationData}
         />
         
-        {/* Map now placed between region selector and timestamps/refresh controls */}
+        {/* Map positioned between selector and controls */}
         <div className="mb-6">
           <Map 
             selectedRegion={selectedRegion} 
@@ -235,6 +236,11 @@ const Index = () => {
               <div className="timestamp-badge bg-blue-50 text-blue-700">
                 <Database className="h-3 w-3 mr-1" />
                 Live: {reservoirCount} reservoirs
+              </div>
+            )}
+            {locationData?.coordinates && (
+              <div className="timestamp-badge bg-green-50 text-green-700">
+                <span className="text-xs">📍 Weather: {locationData.coordinates[0].toFixed(2)}, {locationData.coordinates[1].toFixed(2)}</span>
               </div>
             )}
             <Button 
@@ -286,16 +292,16 @@ const Index = () => {
           </div>
         ) : (
           <>
-            {/* Updated layout: content sections */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
               <div className="lg:col-span-2 space-y-6">
-                {/* Left side content */}
                 <FloodStats floodData={enhancedFloodData} />
-                <ChartSection selectedRegion={selectedRegion} />
+                <ChartSection 
+                  selectedRegion={selectedRegion} 
+                  locationData={locationData}
+                />
                 <PredictionCard floodData={enhancedFloodData} />
               </div>
               
-              {/* Right side content - additional info, no map here anymore */}
               <div className="lg:col-span-1">
                 <div className="sticky top-6 bg-white p-4 rounded-lg shadow">
                   <h2 className="text-lg font-medium mb-2">Flood Risk Information</h2>
@@ -313,6 +319,17 @@ const Index = () => {
                           Last sync: {reservoirLastUpdated.toLocaleTimeString()}
                         </p>
                       )}
+                    </div>
+                  )}
+                  
+                  {locationData?.rainfall && (
+                    <div className="mb-4 p-2 bg-green-50 rounded">
+                      <p className="text-xs text-green-700 font-medium">
+                        ✓ Weather Data Loaded
+                      </p>
+                      <p className="text-xs text-green-600">
+                        Historical and forecast rainfall data available
+                      </p>
                     </div>
                   )}
                   
@@ -341,7 +358,6 @@ const Index = () => {
               </div>
             </div>
             
-            {/* Toggle button for historical flood data section */}
             <div className="mb-4">
               <Button 
                 variant="outline"
@@ -352,7 +368,6 @@ const Index = () => {
               </Button>
             </div>
             
-            {/* Historical Flood Data Section */}
             {showHistoricalData && <HistoricalFloodData />}
           </>
         )}
