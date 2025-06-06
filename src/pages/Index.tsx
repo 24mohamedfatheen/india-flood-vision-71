@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
-import RegionSelector from '../components/RegionSelector';
+import ReservoirSelector from '../components/ReservoirSelector';
 import Map from '../components/Map';
 import FloodStats from '../components/FloodStats';
 import ChartSection from '../components/ChartSection';
@@ -20,6 +20,7 @@ const Index = () => {
   const [selectedRegion, setSelectedRegion] = useState('mumbai');
   const [selectedState, setSelectedState] = useState<string>('');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('');
+  const [selectedReservoir, setSelectedReservoir] = useState<string>('');
   const [locationData, setLocationData] = useState<any>(null);
   const [lastUpdateTime, setLastUpdateTime] = useState<Date>(new Date());
   const [nextUpdateTime, setNextUpdateTime] = useState<Date>(new Date(Date.now() + 12 * 60 * 60 * 1000));
@@ -47,16 +48,18 @@ const Index = () => {
   const enhancedFloodData = floodDataForRegion ? 
     updateFloodDataWithReservoirs([floodDataForRegion])[0] : null;
 
-  // Handle location data from RegionSelector with enhanced data structure
+  // Handle location data from ReservoirSelector with enhanced data structure
   const handleLocationData = useCallback((data: { 
     coordinates: [number, number], 
     rainfall: any, 
     state: string, 
-    district: string 
+    district: string,
+    reservoirName: string
   }) => {
     setLocationData(data);
     setSelectedState(data.state);
     setSelectedDistrict(data.district);
+    setSelectedReservoir(data.reservoirName);
     console.log('📍 Location data updated:', data);
     
     // Trigger reactive updates for dependent components
@@ -64,8 +67,8 @@ const Index = () => {
     setLastUpdateTime(new Date());
     
     toast({
-      title: "Location Updated",
-      description: `Now showing data for ${data.district}, ${data.state}`,
+      title: "Reservoir Selected",
+      description: `Now showing data for ${data.reservoirName} in ${data.district}, ${data.state}`,
       duration: 3000,
     });
   }, [toast]);
@@ -238,8 +241,8 @@ const Index = () => {
           </div>
         </div>
         
-        {/* Enhanced Region Selector with dynamic data */}
-        <RegionSelector 
+        {/* Enhanced Reservoir Selector with dynamic data */}
+        <ReservoirSelector 
           selectedRegion={selectedRegion}
           onRegionChange={handleRegionChange}
           onLocationData={handleLocationData}
@@ -271,7 +274,7 @@ const Index = () => {
             {locationData?.coordinates && (
               <div className="timestamp-badge bg-green-50 text-green-700">
                 <MapPin className="h-3 w-3 mr-1" />
-                <span className="text-xs">{selectedDistrict}, {selectedState}</span>
+                <span className="text-xs">{selectedReservoir}</span>
               </div>
             )}
             <Button 
@@ -334,14 +337,15 @@ const Index = () => {
                     <h2 className="text-lg font-semibold mb-2">Location Information</h2>
                     {locationData ? (
                       <div>
-                        <p className="text-gray-700 mb-2">📍 Selected Location:</p>
-                        <p className="font-medium">{selectedDistrict}, {selectedState}</p>
+                        <p className="text-gray-700 mb-2">🏞️ Selected Reservoir:</p>
+                        <p className="font-medium">{selectedReservoir}</p>
+                        <p className="text-sm text-gray-600 mt-1">{selectedDistrict}, {selectedState}</p>
                         <p className="text-sm text-gray-500 mt-1">
                           Coordinates: {locationData.coordinates[0].toFixed(4)}, {locationData.coordinates[1].toFixed(4)}
                         </p>
                       </div>
                     ) : (
-                      <p className="text-gray-500">Please select a location to view flood data.</p>
+                      <p className="text-gray-500">Please select a reservoir to view flood data.</p>
                     )}
                   </div>
                 )}
@@ -351,7 +355,7 @@ const Index = () => {
                 ) : (
                   <div className="bg-white rounded-lg border p-6">
                     <h2 className="text-lg font-semibold mb-2">Current Conditions</h2>
-                    <p className="text-gray-500">Select a location to view current flood conditions.</p>
+                    <p className="text-gray-500">Select a reservoir to view current flood conditions.</p>
                   </div>
                 )}
               </div>
@@ -367,16 +371,16 @@ const Index = () => {
             
             {/* Information Panel */}
             <div className="bg-white rounded-lg border p-6 mb-6">
-              <h2 className="text-lg font-medium mb-4">Flood Risk Information</h2>
+              <h2 className="text-lg font-medium mb-4">Dynamic Flood Risk Information</h2>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {reservoirCount > 0 && (
                   <div className="p-4 bg-blue-50 rounded-lg">
                     <p className="text-sm text-blue-700 font-medium">
-                      ✓ Live Data Active
+                      ✓ Live Reservoir Data
                     </p>
                     <p className="text-xs text-blue-600">
-                      Analyzing {reservoirCount} reservoir conditions in real-time
+                      Analyzing {reservoirCount} reservoir conditions from Supabase
                     </p>
                     {reservoirLastUpdated && (
                       <p className="text-xs text-blue-500 mt-1">
@@ -392,7 +396,7 @@ const Index = () => {
                       ✓ Weather Data Loaded
                     </p>
                     <p className="text-xs text-green-600">
-                      Historical and forecast rainfall data for {selectedDistrict}
+                      Historical and forecast rainfall data for {selectedReservoir}
                     </p>
                   </div>
                 )}
@@ -403,7 +407,7 @@ const Index = () => {
                       ✓ Location Resolved
                     </p>
                     <p className="text-xs text-purple-600">
-                      {selectedDistrict}, {selectedState} coordinates resolved dynamically
+                      {selectedReservoir} geocoded dynamically using OpenStreetMap
                     </p>
                   </div>
                 )}
@@ -447,8 +451,17 @@ const Index = () => {
         )}
         
         <div className="text-center text-sm rounded-lg bg-white p-4 shadow-sm mb-6">
-          <h3 className="font-medium mb-2">Official Data Sources</h3>
+          <h3 className="font-medium mb-2">Dynamic Data Sources</h3>
           <div className="flex flex-wrap justify-center gap-2 mb-3">
+            <div className="data-source-badge bg-blue-100">
+              Supabase (Reservoir Data)
+            </div>
+            <div className="data-source-badge">
+              OpenStreetMap (Geocoding)
+            </div>
+            <div className="data-source-badge">
+              Open-Meteo (Weather API)
+            </div>
             <a href="https://mausam.imd.gov.in/" target="_blank" rel="noopener noreferrer" className="data-source-badge bg-blue-100">
               Weather Services
             </a>
@@ -458,18 +471,12 @@ const Index = () => {
             <a href="https://ndma.gov.in/" target="_blank" rel="noopener noreferrer" className="data-source-badge">
               Disaster Management
             </a>
-            <a href="https://openstreetmap.org/" target="_blank" rel="noopener noreferrer" className="data-source-badge">
-              OpenStreetMap Geocoding
-            </a>
-            <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" className="data-source-badge">
-              Open-Meteo Weather API
-            </a>
             <a href="https://cursor.ai/" target="_blank" rel="noopener noreferrer" className="data-source-badge bg-indigo-100">
               Cursor AI
             </a>
           </div>
           <p className="text-xs text-muted-foreground">
-            All flood predictions and warnings are based on official meteorological and hydrological data, enhanced with dynamic location resolution and real-time weather APIs.
+            All flood predictions are based on live reservoir data from Supabase, dynamically geocoded locations, and real-time weather APIs.
           </p>
         </div>
         

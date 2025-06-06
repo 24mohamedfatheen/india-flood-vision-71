@@ -33,7 +33,7 @@ const normalizeDistrictName = (name: string): string => {
     .trim();
 };
 
-// Enhanced matching function - moved to top level to avoid hoisting issues
+// Enhanced matching function for district names
 const isDistrictMatch = (geoJsonName: string, targetName: string): boolean => {
   const normalized1 = normalizeDistrictName(geoJsonName);
   const normalized2 = normalizeDistrictName(targetName);
@@ -60,7 +60,6 @@ const FloodMap: React.FC<FloodMapProps> = ({
   const [geoJsonData, setGeoJsonData] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [matchedDistricts, setMatchedDistricts] = useState<Set<string>>(new Set());
   const [selectedDistrictFound, setSelectedDistrictFound] = useState<boolean>(false);
   const geoJsonLayerRef = useRef<L.GeoJSON | null>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -79,25 +78,14 @@ const FloodMap: React.FC<FloodMapProps> = ({
         }
         
         const data = await response.json();
-        console.log('✅ GeoJSON loaded successfully:', data);
+        console.log('✅ GeoJSON loaded successfully with', data.features?.length, 'districts');
         
-        // Create a set of normalized district names from GeoJSON for matching
-        const geoJsonDistricts = new Set<string>();
-        
-        // Add random flood risk levels for demonstration and collect district names
+        // Add random flood risk levels for demonstration
         data.features.forEach((feature: any) => {
           feature.properties.floodRiskLevel = Math.floor(Math.random() * 4);
-          
-          // Collect district names for matching validation
-          if (feature.properties.NAME_2) {
-            geoJsonDistricts.add(normalizeDistrictName(feature.properties.NAME_2));
-          }
         });
         
-        setMatchedDistricts(geoJsonDistricts);
         setGeoJsonData(data);
-        
-        console.log(`📊 GeoJSON contains ${geoJsonDistricts.size} districts for matching`);
       } catch (error) {
         console.error('❌ Error fetching GeoJSON:', error);
         setError('Could not load map data. Please try again.');
@@ -254,47 +242,27 @@ const FloodMap: React.FC<FloodMapProps> = ({
     );
   }
 
-  const mapCenter: L.LatLngExpression = [20.5937, 78.9629];
-
   return (
     <div className={`w-full h-[400px] rounded-lg overflow-hidden relative ${className}`}>
       <MapContainer
-        {...{
-          center: mapCenter,
-          zoom: 5,
-          style: { height: '100%', width: '100%' },
-          scrollWheelZoom: true,
-          ref: mapRef
-        }}
+        center={[20.5937, 78.9629]}
+        zoom={5}
+        style={{ height: '100%', width: '100%' }}
+        scrollWheelZoom={true}
+        ref={mapRef}
       >
         <TileLayer
-          {...{
-            url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          }}
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
         
         {geoJsonData && (
           <GeoJSON
-            {...{
-              key: `geojson-${selectedDistrict}-${selectedState}`,
-              data: geoJsonData,
-              pathOptions: styleFeature,
-              eventHandlers: {
-                add: (e) => {
-                  const layer = e.target;
-                  if (layer.eachLayer) {
-                    layer.eachLayer((subLayer: L.Layer) => {
-                      const feature = (subLayer as any).feature;
-                      if (feature) {
-                        onEachFeature(feature, subLayer);
-                      }
-                    });
-                  }
-                }
-              },
-              ref: geoJsonLayerRef
-            }}
+            key={`geojson-${selectedDistrict}-${selectedState}`}
+            data={geoJsonData}
+            pathOptions={styleFeature}
+            onEachFeature={onEachFeature}
+            ref={geoJsonLayerRef}
           />
         )}
       </MapContainer>

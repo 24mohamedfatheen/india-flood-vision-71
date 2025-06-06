@@ -11,6 +11,31 @@ export interface ResolvedLocation {
 
 // Cache for resolved locations to avoid repeated API calls
 const locationCache = new Map<string, ResolvedLocation>();
+const CACHE_KEY = 'flood_monitor_geocoded_reservoirs';
+
+// Load cache from localStorage on startup
+try {
+  const cached = localStorage.getItem(CACHE_KEY);
+  if (cached) {
+    const parsedCache = JSON.parse(cached);
+    Object.entries(parsedCache).forEach(([key, value]) => {
+      locationCache.set(key, value as ResolvedLocation);
+    });
+    console.log(`📦 Loaded ${locationCache.size} cached reservoir locations`);
+  }
+} catch (error) {
+  console.warn('Could not load cached reservoir locations:', error);
+}
+
+// Save cache to localStorage
+const saveCache = () => {
+  try {
+    const cacheObject = Object.fromEntries(locationCache);
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cacheObject));
+  } catch (error) {
+    console.warn('Could not save geocoded locations to cache:', error);
+  }
+};
 
 /**
  * Geocode a reservoir name using Nominatim OpenStreetMap API
@@ -18,6 +43,7 @@ const locationCache = new Map<string, ResolvedLocation>();
 export const geocodeReservoir = async (reservoirName: string): Promise<ResolvedLocation | null> => {
   // Check cache first
   if (locationCache.has(reservoirName)) {
+    console.log(`🎯 Cache hit for ${reservoirName}`);
     return locationCache.get(reservoirName)!;
   }
 
@@ -71,6 +97,7 @@ export const geocodeReservoir = async (reservoirName: string): Promise<ResolvedL
 
               console.log(`✅ Geocoded ${reservoirName}:`, resolved);
               locationCache.set(reservoirName, resolved);
+              saveCache();
               
               // Small delay to be respectful to the API
               await new Promise(resolve => setTimeout(resolve, 100));
@@ -93,13 +120,12 @@ export const geocodeReservoir = async (reservoirName: string): Promise<ResolvedL
 };
 
 /**
- * Resolve all reservoir locations from Supabase data
+ * Fetch reservoir names from Supabase
  */
-export const resolveAllReservoirLocations = async (): Promise<ResolvedLocation[]> => {
+export const fetchReservoirNamesFromSupabase = async (): Promise<string[]> => {
   try {
-    console.log('🚀 Starting to resolve all reservoir locations...');
+    console.log('🚀 Fetching reservoir names from Supabase...');
     
-    // Get unique reservoir names from Supabase
     const { data, error } = await supabase
       .from('indian_reservoir_levels')
       .select('reservoir_name')
@@ -117,14 +143,36 @@ export const resolveAllReservoirLocations = async (): Promise<ResolvedLocation[]
 
     // Get unique reservoir names
     const uniqueReservoirs = [...new Set(data.map(item => item.reservoir_name))];
-    console.log(`📊 Found ${uniqueReservoirs.length} unique reservoirs to resolve`);
+    console.log(`📊 Found ${uniqueReservoirs.length} unique reservoirs in Supabase`);
+    
+    return uniqueReservoirs;
+  } catch (error) {
+    console.error('❌ Error fetching reservoir names from Supabase:', error);
+    return [];
+  }
+};
+
+/**
+ * Resolve all reservoir locations from Supabase data
+ */
+export const resolveAllReservoirLocations = async (): Promise<ResolvedLocation[]> => {
+  try {
+    console.log('🚀 Starting to resolve all reservoir locations...');
+    
+    // Get unique reservoir names from Supabase
+    const reservoirNames = await fetchReservoirNamesFromSupabase();
+    
+    if (reservoirNames.length === 0) {
+      console.warn('⚠️ No reservoir names to resolve');
+      return [];
+    }
 
     const resolvedLocations: ResolvedLocation[] = [];
-    const batchSize = 5; // Process in small batches to avoid rate limiting
+    const batchSize = 3; // Process in small batches to avoid rate limiting
 
-    for (let i = 0; i < uniqueReservoirs.length; i += batchSize) {
-      const batch = uniqueReservoirs.slice(i, i + batchSize);
-      console.log(`Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(uniqueReservoirs.length/batchSize)}`);
+    for (let i = 0; i < reservoirNames.length; i += batchSize) {
+      const batch = reservoirNames.slice(i, i + batchSize);
+      console.log(`Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(reservoirNames.length/batchSize)}`);
 
       const batchPromises = batch.map(reservoirName => geocodeReservoir(reservoirName));
       const batchResults = await Promise.all(batchPromises);
@@ -136,12 +184,12 @@ export const resolveAllReservoirLocations = async (): Promise<ResolvedLocation[]
       }
 
       // Delay between batches to respect API limits
-      if (i + batchSize < uniqueReservoirs.length) {
+      if (i + batchSize < reservoirNames.length) {
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
 
-    console.log(`✅ Successfully resolved ${resolvedLocations.length} out of ${uniqueReservoirs.length} reservoirs`);
+    console.log(`✅ Successfully resolved ${resolvedLocations.length} out of ${reservoirNames.length} reservoirs`);
     return resolvedLocations;
   } catch (error) {
     console.error('❌ Error resolving reservoir locations:', error);
@@ -169,13 +217,37 @@ export const getDistrictsForState = (locations: ResolvedLocation[], state: strin
 };
 
 /**
- * Get coordinates for a specific state/district combination
+ * Get reservoirs for a specific state/district combination
  */
-export const getCoordinatesForLocation = (
+export const getReservoirsForLocation = (
   locations: ResolvedLocation[], 
-  state: string, 
-  district: string
+  state?: string, 
+  district?: string
+): ResolvedLocation[] => {
+  return locations.filter(loc => {
+    if (state && loc.state !== state) return false;
+    if (district && loc.district !== district) return false;
+    return true;
+  });
+};
+
+/**
+ * Get coordinates for a specific reservoir
+ */
+export const getCoordinatesForReservoir = (
+  locations: ResolvedLocation[], 
+  reservoirName: string
 ): [number, number] | null => {
-  const location = locations.find(loc => loc.state === state && loc.district === district);
+  const location = locations.find(loc => loc.reservoirName === reservoirName);
   return location ? location.coordinates : null;
+};
+
+/**
+ * Get location data for a specific reservoir
+ */
+export const getLocationForReservoir = (
+  locations: ResolvedLocation[], 
+  reservoirName: string
+): ResolvedLocation | null => {
+  return locations.find(loc => loc.reservoirName === reservoirName) || null;
 };
