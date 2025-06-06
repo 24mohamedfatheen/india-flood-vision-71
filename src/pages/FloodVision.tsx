@@ -5,7 +5,6 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { imdApiService, IMDRegionData } from '../services/imdApiService';
-import indiaDistrictsGeoJSON from '../data/india-districts.geojson';
 import { AlertCircle, MapPin, LocateFixed, CircleDot } from 'lucide-react';
 
 // Leaflet Default Icon Fix
