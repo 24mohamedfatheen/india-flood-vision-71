@@ -210,7 +210,7 @@ const FloodMap: React.FC<FloodMapProps> = ({
   return (
     <div className={`w-full h-[400px] rounded-lg overflow-hidden ${className}`}>
       <MapContainer
-        center={[20.5937, 78.9629] as L.LatLngExpression}
+        center={[20.5937, 78.9629]}
         zoom={5}
         style={{ height: '100%', width: '100%' }}
         scrollWheelZoom={true}
@@ -224,7 +224,7 @@ const FloodMap: React.FC<FloodMapProps> = ({
           <GeoJSON
             key="indian-districts"
             data={geoJsonData}
-            style={styleFeature}
+            pathOptions={styleFeature}
             onEachFeature={onEachFeature}
             ref={geoJsonLayerRef}
           />
