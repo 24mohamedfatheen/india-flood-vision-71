@@ -33,7 +33,7 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { toast } = useToast();
   
-  // Load states on component mount
+  // Load states on component mount with improved null filtering
   useEffect(() => {
     const loadStates = async () => {
       setLoadingStates(true);
@@ -43,7 +43,9 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
         const { data, error } = await supabase
           .from('indian_reservoir_levels')
           .select('state')
-          .not('state', 'is', null);
+          .not('state', 'is', null)
+          .neq('state', '')
+          .order('state');
         
         console.log('Supabase response:', data, error);
         
@@ -52,9 +54,24 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
         }
         
         if (data && data.length > 0) {
-          const uniqueStates = [...new Set(data.map((row) => row.state))].sort();
-          console.log('Unique states:', uniqueStates);
+          // Enhanced filtering to exclude null, empty, and whitespace-only values
+          const uniqueStates = [...new Set(
+            data
+              .map((row) => row.state)
+              .filter((state): state is string => 
+                state !== null && 
+                state !== undefined && 
+                typeof state === 'string' && 
+                state.trim().length > 0
+              )
+          )].sort();
+          
+          console.log('Filtered unique states:', uniqueStates);
           setAvailableStates(uniqueStates);
+          
+          if (uniqueStates.length === 0) {
+            setErrorMessage("No valid states found in database");
+          }
         } else {
           setErrorMessage("No states found in database");
         }
@@ -74,9 +91,9 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
     loadStates();
   }, [toast]);
 
-  // Load districts when state changes
+  // Load districts when state changes with improved filtering and cascading logic
   useEffect(() => {
-    if (selectedState) {
+    if (selectedState && selectedState.trim().length > 0) {
       const loadDistricts = async () => {
         setLoadingDistricts(true);
         setErrorMessage(null);
@@ -86,7 +103,9 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
             .from('indian_reservoir_levels')
             .select('district')
             .eq('state', selectedState)
-            .not('district', 'is', null);
+            .not('district', 'is', null)
+            .neq('district', '')
+            .order('district');
           
           console.log('Districts response:', data, error);
           
@@ -95,13 +114,31 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
           }
           
           if (data && data.length > 0) {
-            const uniqueDistricts = [...new Set(data.map((row) => row.district))].sort();
-            console.log('Unique districts:', uniqueDistricts);
+            // Enhanced filtering to exclude null, empty, and whitespace-only values
+            const uniqueDistricts = [...new Set(
+              data
+                .map((row) => row.district)
+                .filter((district): district is string => 
+                  district !== null && 
+                  district !== undefined && 
+                  typeof district === 'string' && 
+                  district.trim().length > 0
+                )
+            )].sort();
+            
+            console.log('Filtered unique districts:', uniqueDistricts);
             setAvailableDistricts(uniqueDistricts);
+            
+            if (uniqueDistricts.length === 0) {
+              setErrorMessage(`No valid districts found for ${selectedState}`);
+            }
           } else {
             setAvailableDistricts([]);
+            setErrorMessage(`No districts found for ${selectedState}`);
           }
-          setSelectedDistrict(""); // Reset district selection
+          
+          // Reset district selection when state changes (cascading logic)
+          setSelectedDistrict("");
         } catch (error) {
           console.error('Error loading districts:', error);
           setErrorMessage("Could not fetch districts. Please try again.");
@@ -117,16 +154,18 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
       
       loadDistricts();
     } else {
+      // Clear districts when no state is selected
       setAvailableDistricts([]);
       setSelectedDistrict("");
     }
   }, [selectedState, toast]);
 
-  // Handle state selection
+  // Handle state selection with proper cascading
   const handleStateChange = (value: string) => {
-    setSelectedState(value);
-    setSelectedDistrict("");
     console.log('State selected:', value);
+    setSelectedState(value);
+    setSelectedDistrict(""); // Reset district when state changes
+    setAvailableDistricts([]); // Clear districts list
   };
   
   // Handle district selection and fetch additional data
@@ -134,7 +173,7 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
     setSelectedDistrict(value);
     console.log('District selected:', value);
     
-    if (selectedState && value) {
+    if (selectedState && value && selectedState.trim().length > 0 && value.trim().length > 0) {
       setLoadingRainfall(true);
       setErrorMessage(null);
       
@@ -155,7 +194,8 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
           }
           
           // Update selected region for compatibility with existing system
-          onRegionChange(value.toLowerCase().replace(/\s+/g, ''));
+          const regionKey = value.toLowerCase().replace(/\s+/g, '');
+          onRegionChange(regionKey);
           
           toast({
             title: "Location Selected",
@@ -212,14 +252,17 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
             <SelectTrigger className="w-full">
               <SelectValue placeholder={loadingStates ? "Loading states..." : "Select a state"} />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white border border-gray-200 shadow-lg z-50">
               {availableStates.map((state) => (
-                <SelectItem key={state} value={state}>
+                <SelectItem key={state} value={state} className="hover:bg-gray-100">
                   {state}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          {availableStates.length > 0 && (
+            <p className="text-xs text-gray-500 mt-1">{availableStates.length} states available</p>
+          )}
         </div>
         
         {/* District Selection */}
@@ -230,23 +273,27 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
           <Select 
             value={selectedDistrict} 
             onValueChange={handleDistrictChange}
-            disabled={!selectedState || loadingDistricts}
+            disabled={!selectedState || loadingDistricts || availableDistricts.length === 0}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder={
                 !selectedState ? "Select a state first" :
                 loadingDistricts ? "Loading districts..." :
+                availableDistricts.length === 0 ? "No districts available" :
                 "Select a district"
               } />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white border border-gray-200 shadow-lg z-50">
               {availableDistricts.map((district) => (
-                <SelectItem key={district} value={district}>
+                <SelectItem key={district} value={district} className="hover:bg-gray-100">
                   {district}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          {selectedState && availableDistricts.length > 0 && (
+            <p className="text-xs text-gray-500 mt-1">{availableDistricts.length} districts in {selectedState}</p>
+          )}
         </div>
         
         {/* Status Information */}
@@ -266,6 +313,14 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
                   <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
                 )}
               </div>
+            </div>
+          )}
+          
+          {selectedState && !selectedDistrict && availableDistricts.length === 0 && !loadingDistricts && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+              <p className="text-sm text-yellow-800">
+                No districts found for {selectedState}. This state may have limited data in our current dataset.
+              </p>
             </div>
           )}
         </div>

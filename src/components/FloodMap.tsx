@@ -21,6 +21,12 @@ const getColor = (riskLevel: number): string => {
   }
 };
 
+// Normalize district names for comparison
+const normalizeDistrictName = (name: string): string => {
+  if (!name) return '';
+  return name.toLowerCase().trim().replace(/\s+/g, ' ');
+};
+
 const FloodMap: React.FC<FloodMapProps> = ({ 
   selectedState, 
   selectedDistrict, 
@@ -29,6 +35,7 @@ const FloodMap: React.FC<FloodMapProps> = ({
   const [geoJsonData, setGeoJsonData] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [matchedDistricts, setMatchedDistricts] = useState<Set<string>>(new Set());
   const geoJsonLayerRef = useRef<L.GeoJSON | null>(null);
 
   // Fetch GeoJSON data for Indian districts
@@ -47,13 +54,23 @@ const FloodMap: React.FC<FloodMapProps> = ({
         const data = await response.json();
         console.log('GeoJSON loaded successfully:', data);
         
-        // Add random flood risk levels for demonstration
-        // In a real app, this would come from your flood data
+        // Create a set of normalized district names from GeoJSON for matching
+        const geoJsonDistricts = new Set<string>();
+        
+        // Add random flood risk levels for demonstration and collect district names
         data.features.forEach((feature: any) => {
           feature.properties.floodRiskLevel = Math.floor(Math.random() * 4);
+          
+          // Collect district names for matching validation
+          if (feature.properties.NAME_2) {
+            geoJsonDistricts.add(normalizeDistrictName(feature.properties.NAME_2));
+          }
         });
         
+        setMatchedDistricts(geoJsonDistricts);
         setGeoJsonData(data);
+        
+        console.log(`GeoJSON contains ${geoJsonDistricts.size} districts for matching`);
       } catch (error) {
         console.error('Error fetching GeoJSON:', error);
         setError('Could not load map data. Please try again.');
@@ -66,7 +83,7 @@ const FloodMap: React.FC<FloodMapProps> = ({
   }, []);
 
   // Style function for GeoJSON features
-  const style = (feature: any) => {
+  const styleFeature = (feature: any) => {
     const riskLevel = feature?.properties?.floodRiskLevel || 0;
     return {
       fillColor: getColor(riskLevel),
@@ -114,12 +131,19 @@ const FloodMap: React.FC<FloodMapProps> = ({
     if (props) {
       const riskLevel = props.floodRiskLevel || 0;
       const riskText = ['Low Risk', 'Medium Risk', 'High Risk', 'Severe Risk'][riskLevel];
+      const districtName = props.NAME_2 || 'Unknown District';
+      const stateName = props.NAME_1 || 'Unknown State';
+      
+      // Check if this district matches our normalized dataset
+      const normalizedDistrict = normalizeDistrictName(districtName);
+      const isMatched = matchedDistricts.has(normalizedDistrict);
       
       layer.bindPopup(`
         <div>
-          <h3><strong>${props.NAME_2 || 'Unknown District'}</strong></h3>
-          <p>State: ${props.NAME_1 || 'Unknown State'}</p>
+          <h3><strong>${districtName}</strong></h3>
+          <p>State: ${stateName}</p>
           <p>Flood Risk: <span style="color: ${getColor(riskLevel)}"><strong>${riskText}</strong></span></p>
+          ${!isMatched ? '<p style="color: #f59e0b; font-size: 12px;">⚠️ Limited data available</p>' : ''}
         </div>
       `);
     }
@@ -131,13 +155,17 @@ const FloodMap: React.FC<FloodMapProps> = ({
       click: zoomToFeature
     });
 
-    // Highlight selected district
+    // Highlight selected district with improved matching
     if (selectedDistrict && selectedState) {
-      const isSelected = 
-        props?.NAME_2?.toLowerCase().includes(selectedDistrict.toLowerCase()) &&
-        props?.NAME_1?.toLowerCase().includes(selectedState.toLowerCase());
+      const featureDistrict = normalizeDistrictName(props?.NAME_2 || '');
+      const featureState = normalizeDistrictName(props?.NAME_1 || '');
+      const targetDistrict = normalizeDistrictName(selectedDistrict);
+      const targetState = normalizeDistrictName(selectedState);
       
-      if (isSelected) {
+      const isDistrictMatch = featureDistrict.includes(targetDistrict) || targetDistrict.includes(featureDistrict);
+      const isStateMatch = featureState.includes(targetState) || targetState.includes(featureState);
+      
+      if (isDistrictMatch && isStateMatch) {
         setTimeout(() => {
           layer.setStyle({
             weight: 4,
@@ -145,6 +173,12 @@ const FloodMap: React.FC<FloodMapProps> = ({
             fillOpacity: 0.9
           });
           layer.bringToFront();
+          
+          // Zoom to the selected district
+          const map = (layer as any)._map;
+          if (map) {
+            map.fitBounds((layer as any).getBounds());
+          }
         }, 100);
       }
     }
@@ -167,6 +201,7 @@ const FloodMap: React.FC<FloodMapProps> = ({
         <div className="text-center">
           <p className="text-red-600 mb-2">Map Error</p>
           <p className="text-red-500 text-sm">{error}</p>
+          <p className="text-red-400 text-xs mt-2">Please check your internet connection and try again</p>
         </div>
       </div>
     );
@@ -175,7 +210,7 @@ const FloodMap: React.FC<FloodMapProps> = ({
   return (
     <div className={`w-full h-[400px] rounded-lg overflow-hidden ${className}`}>
       <MapContainer
-        center={[20.5937, 78.9629]} // Center of India
+        center={[20.5937, 78.9629] as L.LatLngExpression}
         zoom={5}
         style={{ height: '100%', width: '100%' }}
         scrollWheelZoom={true}
@@ -187,15 +222,16 @@ const FloodMap: React.FC<FloodMapProps> = ({
         
         {geoJsonData && (
           <GeoJSON
+            key="indian-districts"
             data={geoJsonData}
-            style={style}
+            style={styleFeature}
             onEachFeature={onEachFeature}
             ref={geoJsonLayerRef}
           />
         )}
       </MapContainer>
       
-      {/* Map Legend */}
+      {/* Enhanced Map Legend */}
       <div className="absolute bottom-4 right-4 bg-white p-3 rounded-lg shadow-lg border z-10">
         <h4 className="text-sm font-semibold mb-2">Flood Risk Levels</h4>
         <div className="space-y-1">
@@ -216,7 +252,22 @@ const FloodMap: React.FC<FloodMapProps> = ({
             <span className="ml-2 text-xs">Severe Risk</span>
           </div>
         </div>
+        {selectedDistrict && selectedState && (
+          <div className="mt-2 pt-2 border-t border-gray-200">
+            <p className="text-xs text-gray-600">Selected:</p>
+            <p className="text-xs font-medium">{selectedDistrict}, {selectedState}</p>
+          </div>
+        )}
       </div>
+      
+      {/* Fallback UI for unmatched districts */}
+      {selectedDistrict && selectedState && (
+        <div className="absolute top-4 left-4 bg-yellow-50 border border-yellow-200 p-2 rounded-lg z-10 max-w-sm">
+          <p className="text-xs text-yellow-800">
+            <strong>Note:</strong> If your selected district isn't highlighted, it might have limited flood data available in our current dataset.
+          </p>
+        </div>
+      )}
     </div>
   );
 };
