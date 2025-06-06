@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, GeoJSON, useMap, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { imdApiService, IMDRegionData } from '../services/imdApiService';
+import indiaDistrictsGeoJSON from '../data/india-districts.geojson';
 import { AlertCircle, MapPin, LocateFixed, CircleDot } from 'lucide-react';
 
 // Leaflet Default Icon Fix
@@ -143,7 +145,7 @@ const FloodVision: React.FC = () => {
   }, [aggregatedFloodData, selectedState]);
 
   // Map Styling for Choropleth Layer
-  const getFeatureStyle = useCallback((feature: L.GeoJSON.Feature) => {
+  const getFeatureStyle = useCallback((feature: any) => {
     const geoJsonDistrictName = feature.properties?.NAME_2 || feature.properties?.district || feature.properties?.name || '';
     const geoJsonStateName = feature.properties?.NAME_1 || feature.properties?.state || '';
 
@@ -186,7 +188,7 @@ const FloodVision: React.FC = () => {
   }, [aggregatedFloodData, selectedDistrict, selectedState]);
 
   // Map Interaction Logic
-  const onEachFeature = useCallback((feature: L.GeoJSON.Feature, layer: L.Layer) => {
+  const onEachFeature = useCallback((feature: any, layer: L.Layer) => {
     if (feature.properties) {
       const districtName = feature.properties.NAME_2 || feature.properties.district || feature.properties.name || 'Unknown District';
       const stateName = feature.properties.NAME_1 || feature.properties.state || 'Unknown State';
@@ -352,13 +354,13 @@ const FloodVision: React.FC = () => {
             <GeoJSON
               data={geoJsonData}
               style={getFeatureStyle}
-              onEachFeature={onEachFeature as any}
+              onEachFeature={onEachFeature}
             />
           )}
 
           {/* Marker for user's current location */}
           {userLocation && (
-            <L.Marker 
+            <Marker 
               position={userLocation} 
               icon={L.divIcon({
                 className: 'my-custom-user-location-pin',
@@ -369,13 +371,13 @@ const FloodVision: React.FC = () => {
                 iconAnchor: [15, 15]
               })}
             >
-              <L.Popup>
+              <Popup>
                 <div style={{fontFamily: 'Inter, sans-serif', fontSize: '14px'}}>
                   <strong>Your Current Location</strong><br/>
                   Detected by browser.
                 </div>
-              </L.Popup>
-            </L.Marker>
+              </Popup>
+            </Marker>
           )}
 
         </MapContainer>
