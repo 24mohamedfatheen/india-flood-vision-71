@@ -98,7 +98,7 @@ const ReservoirSelector: React.FC<ReservoirSelectorProps> = ({
 
   // Update districts when state changes
   useEffect(() => {
-    if (selectedState && allResolvedLocations.length > 0) {
+    if (selectedState && selectedState !== "all-states" && allResolvedLocations.length > 0) {
       const districts = getDistrictsForState(allResolvedLocations, selectedState);
       setAvailableDistricts(districts);
       setSelectedDistrict(""); // Reset district selection
@@ -117,16 +117,16 @@ const ReservoirSelector: React.FC<ReservoirSelectorProps> = ({
 
   // Update reservoirs when district changes
   useEffect(() => {
-    if (selectedDistrict && selectedState && allResolvedLocations.length > 0) {
+    if (selectedDistrict && selectedDistrict !== "all-districts" && selectedState && selectedState !== "all-states" && allResolvedLocations.length > 0) {
       const reservoirsInDistrict = getReservoirsForLocation(allResolvedLocations, selectedState, selectedDistrict);
       setAvailableReservoirs(reservoirsInDistrict);
       setSelectedReservoir(""); // Reset reservoir selection
       
       console.log(`🏞️ Found ${reservoirsInDistrict.length} reservoirs in ${selectedDistrict}, ${selectedState}`);
-    } else if (selectedState && !selectedDistrict) {
+    } else if (selectedState && selectedState !== "all-states" && !selectedDistrict) {
       const reservoirsInState = getReservoirsForLocation(allResolvedLocations, selectedState);
       setAvailableReservoirs(reservoirsInState);
-    } else if (!selectedState) {
+    } else if (!selectedState || selectedState === "all-states") {
       setAvailableReservoirs(allResolvedLocations);
     }
   }, [selectedDistrict, selectedState, allResolvedLocations]);
@@ -134,14 +134,22 @@ const ReservoirSelector: React.FC<ReservoirSelectorProps> = ({
   // Handle state selection
   const handleStateChange = (value: string) => {
     console.log('State selected:', value);
-    setSelectedState(value);
+    if (value === "all-states") {
+      setSelectedState("");
+    } else {
+      setSelectedState(value);
+    }
     setSelectedDistrict("");
     setSelectedReservoir("");
   };
   
   // Handle district selection
   const handleDistrictChange = (value: string) => {
-    setSelectedDistrict(value);
+    if (value === "all-districts") {
+      setSelectedDistrict("");
+    } else {
+      setSelectedDistrict(value);
+    }
     setSelectedReservoir("");
     console.log('District selected:', value);
   };
@@ -296,7 +304,7 @@ const ReservoirSelector: React.FC<ReservoirSelectorProps> = ({
               Filter by state (optional):
             </label>
             <Select 
-              value={selectedState} 
+              value={selectedState || "all-states"} 
               onValueChange={handleStateChange} 
               disabled={loadingLocations || availableStates.length === 0}
             >
@@ -308,7 +316,7 @@ const ReservoirSelector: React.FC<ReservoirSelectorProps> = ({
                 } />
               </SelectTrigger>
               <SelectContent className="bg-white border border-gray-200 shadow-lg z-50">
-                <SelectItem value="" className="hover:bg-gray-100">All states</SelectItem>
+                <SelectItem value="all-states" className="hover:bg-gray-100">All states</SelectItem>
                 {availableStates.map((state) => (
                   <SelectItem key={state} value={state} className="hover:bg-gray-100">
                     {state}
@@ -324,19 +332,19 @@ const ReservoirSelector: React.FC<ReservoirSelectorProps> = ({
               Filter by district (optional):
             </label>
             <Select 
-              value={selectedDistrict} 
+              value={selectedDistrict || "all-districts"} 
               onValueChange={handleDistrictChange}
-              disabled={!selectedState || availableDistricts.length === 0}
+              disabled={!selectedState || selectedState === "all-states" || availableDistricts.length === 0}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder={
-                  !selectedState ? "Select state first" :
+                  !selectedState || selectedState === "all-states" ? "Select state first" :
                   availableDistricts.length === 0 ? "No districts available" :
                   "All districts"
                 } />
               </SelectTrigger>
               <SelectContent className="bg-white border border-gray-200 shadow-lg z-50">
-                <SelectItem value="" className="hover:bg-gray-100">All districts</SelectItem>
+                <SelectItem value="all-districts" className="hover:bg-gray-100">All districts</SelectItem>
                 {availableDistricts.map((district) => (
                   <SelectItem key={district} value={district} className="hover:bg-gray-100">
                     {district}

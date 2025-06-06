@@ -251,3 +251,23 @@ export const getLocationForReservoir = (
 ): ResolvedLocation | null => {
   return locations.find(loc => loc.reservoirName === reservoirName) || null;
 };
+
+/**
+ * Get coordinates for a location (state/district combination)
+ */
+export const getCoordinatesForLocation = (
+  locations: ResolvedLocation[], 
+  state: string, 
+  district?: string
+): [number, number] | null => {
+  const matchingLocations = locations.filter(loc => {
+    if (loc.state !== state) return false;
+    if (district && loc.district !== district) return false;
+    return true;
+  });
+  
+  if (matchingLocations.length === 0) return null;
+  
+  // Return coordinates of the first matching location
+  return matchingLocations[0].coordinates;
+};
