@@ -1,13 +1,13 @@
 
 import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
 import { CircleDot } from 'lucide-react';
 import { IMDRegionData } from '../../services/imdApiService';
 import MapMarker from './MapMarker';
+import 'leaflet/dist/leaflet.css';
 
-// Fix Leaflet icon issues
+// Leaflet icon fix
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
@@ -29,24 +29,20 @@ interface MapProps {
   setMapInstance: (map: L.Map) => void;
 }
 
-interface MapRecenterProps {
+// MapRecenter component to handle map events and expose map instance
+const MapRecenter: React.FC<{
   center: L.LatLngExpression;
   zoom: number;
-  mapInstance: L.Map | null;
   setMapInstance: (map: L.Map) => void;
-}
-
-const MapRecenter: React.FC<MapRecenterProps> = ({ center, zoom, mapInstance, setMapInstance }) => {
+}> = ({ center, zoom, setMapInstance }) => {
   const map = useMapEvents({
     load: (e) => {
-      if (!mapInstance) {
-        setMapInstance(e.target);
-      }
-    }
+      setMapInstance(e.target);
+    },
   });
 
   useEffect(() => {
-    if (map && (Array.isArray(center) ? center[0] !== 0 || center[1] !== 0 : true)) {
+    if (map && Array.isArray(center) && (center[0] !== 0 || center[1] !== 0)) {
       map.flyTo(center, zoom, { animate: true, duration: 1 });
     }
   }, [center, zoom, map]);
@@ -54,7 +50,7 @@ const MapRecenter: React.FC<MapRecenterProps> = ({ center, zoom, mapInstance, se
   return null;
 };
 
-const MapComponent: React.FC<MapProps> = ({
+const Map: React.FC<MapProps> = ({
   selectedState,
   setSelectedState,
   selectedDistrict,
@@ -69,21 +65,26 @@ const MapComponent: React.FC<MapProps> = ({
 }) => {
   const [mapInstance, setLocalMapInstance] = useState<L.Map | null>(null);
 
-  const handleSetMapInstance = (map: L.Map) => {
+  const handleMapInstanceSet = (map: L.Map) => {
     setLocalMapInstance(map);
     setMapInstance(map);
   };
 
   // Create user location icon
-  const userLocationIcon = L.divIcon({
-    html: `
-      <div class="user-location-marker" style="width: 16px; height: 16px; display: flex; align-items: center; justify-content: center;">
-        <div style="width: 16px; height: 16px; background: #3B82F6; border: 2px solid white; border-radius: 50%; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;"></div>
-      </div>
-    `,
-    iconSize: [16, 16],
-    iconAnchor: [8, 8]
-  });
+  const createUserLocationIcon = () => {
+    return L.divIcon({
+      html: `
+        <div class="flex items-center justify-center w-6 h-6 bg-blue-500 rounded-full animate-pulse border-2 border-white shadow-lg">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" class="text-white">
+            <circle cx="12" cy="12" r="10"/>
+          </svg>
+        </div>
+      `,
+      className: 'custom-user-location-marker',
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+    });
+  };
 
   return (
     <MapContainer
@@ -93,21 +94,21 @@ const MapComponent: React.FC<MapProps> = ({
       zoomControl={true}
       scrollWheelZoom={true}
     >
-      <TileLayer
-        url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      />
-      
       <MapRecenter 
         center={mapCenter} 
         zoom={mapZoom} 
-        mapInstance={mapInstance}
-        setMapInstance={handleSetMapInstance}
+        setMapInstance={handleMapInstanceSet}
       />
       
-      {/* Render markers for all flood data */}
-      {mapInstance && aggregatedFloodData.map((data, index) => (
-        data.coordinates && data.coordinates[0] && data.coordinates[1] ? (
+      <TileLayer
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      />
+
+      {/* Render flood data markers */}
+      {mapInstance && aggregatedFloodData
+        .filter(data => data.coordinates && data.coordinates[0] !== 0 && data.coordinates[1] !== 0)
+        .map((data, index) => (
           <MapMarker
             key={`${data.state}-${data.district}-${index}`}
             data={data}
@@ -117,15 +118,27 @@ const MapComponent: React.FC<MapProps> = ({
             setSelectedDistrict={setSelectedDistrict}
             setSelectedState={setSelectedState}
           />
-        ) : null
-      ))}
-      
+        ))
+      }
+
       {/* User location marker */}
       {userLocation && (
-        <Marker position={userLocation} icon={userLocationIcon} />
+        <Marker 
+          position={userLocation} 
+          icon={createUserLocationIcon()}
+        >
+          <Popup>
+            <div className="text-center">
+              <p className="font-medium">Your Location</p>
+              <p className="text-sm text-gray-600">
+                {userLocation[0].toFixed(4)}, {userLocation[1].toFixed(4)}
+              </p>
+            </div>
+          </Popup>
+        </Marker>
       )}
     </MapContainer>
   );
 };
 
-export default MapComponent;
+export default Map;
