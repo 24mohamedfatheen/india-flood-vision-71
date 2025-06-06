@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
 import L from 'leaflet';
@@ -210,14 +209,18 @@ const FloodMap: React.FC<FloodMapProps> = ({
   return (
     <div className={`w-full h-[400px] rounded-lg overflow-hidden ${className}`}>
       <MapContainer
-        center={[20.5937, 78.9629]}
-        zoom={5}
-        style={{ height: '100%', width: '100%' }}
-        scrollWheelZoom={true}
+        {...{
+          center: [20.5937, 78.9629] as [number, number],
+          zoom: 5,
+          style: { height: '100%', width: '100%' },
+          scrollWheelZoom: true
+        }}
       >
         <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          {...{
+            url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          }}
         />
         
         {geoJsonData && (
