@@ -1,8 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { MapPin } from 'lucide-react';
-import { regions } from '../data/floodData';
-import { indiaStatesAndDistricts, getDistrictsForState, getDistrictFullData } from '../data/indiaStatesDistricts';
+import { getAllStates, getDistrictsForState, floodData, fetchImdData } from '../data/floodData';
 import {
   Select,
   SelectContent,
@@ -19,18 +18,37 @@ interface RegionSelectorProps {
 const RegionSelector: React.FC<RegionSelectorProps> = ({ selectedRegion, onRegionChange }) => {
   const [selectedState, setSelectedState] = useState<string>("");
   const [selectedDistrict, setSelectedDistrict] = useState<string>("");
-  const [availableDistricts, setAvailableDistricts] = useState<{ value: string; label: string }[]>([]);
+  const [availableStates, setAvailableStates] = useState<string[]>([]);
+  const [availableDistricts, setAvailableDistricts] = useState<string[]>([]);
+  const [dataLoaded, setDataLoaded] = useState<boolean>(false);
   
+  // Load data on component mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        await fetchImdData();
+        setAvailableStates(getAllStates());
+        setDataLoaded(true);
+        console.log('RegionSelector: Data loaded, available states:', getAllStates().length);
+      } catch (error) {
+        console.error('Error loading region data:', error);
+      }
+    };
+
+    loadData();
+  }, []);
+
   // When a state is selected, update the available districts
   useEffect(() => {
-    if (selectedState) {
+    if (selectedState && dataLoaded) {
       const districts = getDistrictsForState(selectedState);
       setAvailableDistricts(districts);
+      console.log(`Districts for ${selectedState}:`, districts.length);
       
       // Reset district selection when state changes
       setSelectedDistrict("");
     }
-  }, [selectedState]);
+  }, [selectedState, dataLoaded]);
 
   // Handle state selection
   const handleStateChange = (value: string) => {
@@ -41,18 +59,14 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({ selectedRegion, onRegio
   const handleDistrictChange = (value: string) => {
     setSelectedDistrict(value);
     
-    // Find the matching region in the flood data if possible
-    // In a real app, you would probably map districts to regions more precisely
-    const matchingRegion = regions.find(region => 
-      region.label.toLowerCase().includes(value) || 
-      value.includes(region.label.toLowerCase())
+    // Find the matching region in the flood data
+    const matchingRegion = floodData.find(data => 
+      data.region.toLowerCase() === value.toLowerCase() && 
+      data.state.toLowerCase() === selectedState.toLowerCase()
     );
     
     if (matchingRegion) {
-      onRegionChange(matchingRegion.value);
-    } else {
-      // If no direct match in regions data, use the district value as region
-      onRegionChange(value);
+      onRegionChange(matchingRegion.region);
     }
   };
 
@@ -67,16 +81,16 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({ selectedRegion, onRegio
         {/* State Selection */}
         <div>
           <label htmlFor="state-select" className="block text-sm font-medium mb-2 text-muted-foreground">
-            Select a state in India:
+            Select a state from live data:
           </label>
-          <Select value={selectedState} onValueChange={handleStateChange}>
+          <Select value={selectedState} onValueChange={handleStateChange} disabled={!dataLoaded}>
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select a state" />
+              <SelectValue placeholder={dataLoaded ? "Select a state" : "Loading states..."} />
             </SelectTrigger>
             <SelectContent>
-              {indiaStatesAndDistricts.map((state) => (
-                <SelectItem key={state.value} value={state.value}>
-                  {state.label}
+              {availableStates.map((state) => (
+                <SelectItem key={state} value={state}>
+                  {state}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -95,8 +109,8 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({ selectedRegion, onRegio
               </SelectTrigger>
               <SelectContent>
                 {availableDistricts.map((district) => (
-                  <SelectItem key={district.value} value={district.value}>
-                    {district.label}
+                  <SelectItem key={district} value={district}>
+                    {district}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -104,37 +118,37 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({ selectedRegion, onRegio
           </div>
         )}
         
-        {/* Original Region Selection - keep for compatibility */}
-        <div className="md:col-span-2 mt-4">
-          <label htmlFor="region-select" className="block text-sm font-medium mb-2 text-muted-foreground">
-            Or select a location with flood data:
-          </label>
-          <select
-            id="region-select"
-            className="w-full p-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-            value={selectedRegion}
-            onChange={(e) => onRegionChange(e.target.value)}
-          >
-            {regions.map((region) => (
-              <option key={region.value} value={region.value}>
-                {region.label}, {region.state}
-              </option>
-            ))}
-          </select>
+        {/* Data status indicator */}
+        <div className="md:col-span-2">
+          <div className="text-sm text-muted-foreground">
+            {dataLoaded ? (
+              <>
+                <span className="text-green-600">✓</span> Live data loaded: {floodData.length} regions with flood monitoring data
+              </>
+            ) : (
+              <>
+                <span className="text-yellow-600">⟳</span> Loading live flood data from Supabase...
+              </>
+            )}
+          </div>
         </div>
         
         <div className="flex items-center justify-center md:justify-end md:col-span-2 mt-4">
           <div className="flex items-center mr-4">
-            <span className="inline-block w-3 h-3 rounded-full bg-flood-safe mr-2"></span>
+            <span className="inline-block w-3 h-3 rounded-full bg-green-500 mr-2"></span>
             <span className="text-xs">Low Risk</span>
           </div>
           <div className="flex items-center mr-4">
-            <span className="inline-block w-3 h-3 rounded-full bg-flood-warning mr-2"></span>
+            <span className="inline-block w-3 h-3 rounded-full bg-yellow-500 mr-2"></span>
             <span className="text-xs">Medium Risk</span>
           </div>
           <div className="flex items-center mr-4">
-            <span className="inline-block w-3 h-3 rounded-full bg-flood-danger mr-2"></span>
+            <span className="inline-block w-3 h-3 rounded-full bg-orange-500 mr-2"></span>
             <span className="text-xs">High Risk</span>
+          </div>
+          <div className="flex items-center">
+            <span className="inline-block w-3 h-3 rounded-full bg-red-500 mr-2"></span>
+            <span className="text-xs">Severe Risk</span>
           </div>
         </div>
       </div>

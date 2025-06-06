@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { floodData, getFloodDataForRegion } from '../../data/floodData';
+import { floodData, getFloodDataForRegion, fetchImdData } from '../../data/floodData';
 import { useToast } from '../../hooks/use-toast';
 import MapControls from './MapControls';
 import MapMarker from './MapMarker';
@@ -19,8 +19,29 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
   const layersRef = useRef<{[key: string]: L.Layer}>({});
   const [mapLoaded, setMapLoaded] = useState<boolean>(false);
   const [lastUpdate, setLastUpdate] = useState<string>('');
+  const [dataLoaded, setDataLoaded] = useState<boolean>(false);
   const selectedFloodData = getFloodDataForRegion(selectedRegion);
   const { toast } = useToast();
+
+  // Load data on component mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        await fetchImdData();
+        setDataLoaded(true);
+        console.log('Flood data loaded successfully, total regions:', floodData.length);
+      } catch (error) {
+        console.error('Error loading flood data:', error);
+        toast({
+          title: "Data Error",
+          description: "Could not load flood data. Please try again later.",
+          variant: "destructive"
+        });
+      }
+    };
+
+    loadData();
+  }, [toast]);
 
   // Initialize map
   useEffect(() => {
@@ -75,7 +96,7 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
 
   // Update map when selected region changes
   useEffect(() => {
-    if (!mapLoaded || !map.current || !selectedFloodData) return;
+    if (!mapLoaded || !map.current || !selectedFloodData || !dataLoaded) return;
 
     // Fly to the selected region with a closer zoom for smaller viewport
     map.current.flyTo(
@@ -90,17 +111,17 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
     // Add state boundary highlighting
     updateStateBoundary();
 
-  }, [selectedRegion, mapLoaded, selectedFloodData]);
+  }, [selectedRegion, mapLoaded, selectedFloodData, dataLoaded]);
 
   // Update flood areas on map
   const updateFloodAreas = () => {
-    if (!map.current || !layersRef.current['floodAreas']) return;
+    if (!map.current || !layersRef.current['floodAreas'] || !dataLoaded) return;
     
     // Clear existing flood areas
     const floodAreasLayer = layersRef.current['floodAreas'] as L.LayerGroup;
     floodAreasLayer.clearLayers();
     
-    // Generate flood area features
+    // Generate flood area features for regions with higher risk
     const filteredFloodData = floodData.filter(data => data.riskLevel !== 'low');
     
     filteredFloodData.forEach(data => {
@@ -127,8 +148,8 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
         polygon.bindPopup(`
           <div class="font-bold">${data.region}, ${data.state}</div>
           <div>Risk Level: ${data.riskLevel.toUpperCase()}</div>
-          <div>Area: ${data.affectedArea} km²</div>
-          <div>Population: ${data.populationAffected.toLocaleString()}</div>
+          <div>Reservoir Level: ${data.riverLevel || 'N/A'}</div>
+          <div>Population: ${data.populationAffected.toLocaleString() || 'N/A'}</div>
         `);
         
         // Add to layer group
@@ -146,9 +167,8 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
     stateBoundariesLayer.clearLayers();
     
     // Create a simplified state boundary (placeholder - in a real app, you'd use GeoJSON data for state boundaries)
-    // This is a simplified circle representing the state boundary for demo purposes
     const stateCenter = selectedFloodData.coordinates;
-    const stateRadius = Math.sqrt(selectedFloodData.affectedArea) * 500; // Scale based on affected area
+    const stateRadius = 50000; // Fixed radius for demo purposes
     
     // Get color based on risk level
     const stateColor = 
@@ -230,10 +250,19 @@ const MapComponent: React.FC<MapProps> = ({ selectedRegion }) => {
       
       <MapLegend />
       
-      {/* Render map markers once the map is loaded */}
-      {mapLoaded && map.current && floodData.map(data => (
+      {/* Show loading indicator while data is being fetched */}
+      {!dataLoaded && (
+        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20">
+          <div className="bg-white p-4 rounded-lg">
+            <div className="text-center">Loading flood data...</div>
+          </div>
+        </div>
+      )}
+      
+      {/* Render map markers once the map and data are loaded */}
+      {mapLoaded && map.current && dataLoaded && floodData.map(data => (
         <MapMarker 
-          key={data.id}
+          key={`${data.state}-${data.region}`}
           data={data}
           map={map.current!}
           selectedRegion={selectedRegion}
