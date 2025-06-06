@@ -1,4 +1,5 @@
 
+
 import React, { useRef, useEffect, useState } from 'react';
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
 import * as L from 'leaflet';
@@ -216,9 +217,7 @@ const FloodMap: React.FC<FloodMapProps> = ({
             key={`geojson-${selectedState}-${selectedDistrict}`}
             data={geoJsonData}
             pathOptions={getDistrictStyle}
-            eventHandlers={{
-              add: onEachFeature
-            }}
+            onEachFeature={onEachFeature}
             ref={geoJsonRef}
           />
         )}
@@ -271,3 +270,4 @@ const FloodMap: React.FC<FloodMapProps> = ({
 };
 
 export default FloodMap;
+
