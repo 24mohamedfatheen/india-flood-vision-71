@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { CloudRain, MapPin, Earth, Users, Droplet, ExternalLink, AlertTriangle, BarChart3 } from 'lucide-react';
 import { FloodData } from '../data/floodData';
@@ -19,9 +18,7 @@ const FloodStats: React.FC<FloodStatsProps> = ({ floodData }) => {
     );
   }
 
-  const getRiskBadgeColor = (riskLevel: string | undefined) => {
-    if (!riskLevel) return 'bg-gray-100 text-gray-800 border-gray-200';
-    
+  const getRiskBadgeColor = (riskLevel: string) => {
     switch (riskLevel) {
       case 'severe':
         return 'bg-flood-danger/20 text-flood-danger border-flood-danger/30';
@@ -36,19 +33,12 @@ const FloodStats: React.FC<FloodStatsProps> = ({ floodData }) => {
   };
   
   // Format timestamp
-  const getFormattedTime = (timestamp: string | undefined) => {
-    if (!timestamp) return 'Unknown';
-    try {
-      return new Date(timestamp).toLocaleString();
-    } catch {
-      return 'Invalid date';
-    }
+  const getFormattedTime = (timestamp: string) => {
+    return new Date(timestamp).toLocaleString();
   };
   
   // Calculate percentage of affected population
   const getAffectedPercentage = () => {
-    if (!floodData.region || !floodData.populationAffected) return '0.0';
-    
     // This is a simplified calculation - in a real app, you'd use actual population data
     const regionPopulations: Record<string, number> = {
       'mumbai': 1.84e7, // 18.4 million
@@ -70,14 +60,9 @@ const FloodStats: React.FC<FloodStatsProps> = ({ floodData }) => {
       'guwahati': 9.5e5, // 0.95 million
     };
     
-    const totalPopulation = regionPopulations[floodData.region.toLowerCase()] || 1000000;
+    const totalPopulation = regionPopulations[floodData.region] || 1000000;
     return ((floodData.populationAffected / totalPopulation) * 100).toFixed(1);
   };
-
-  // Safe string operations
-  const safeRegionName = floodData.region || 'Unknown Region';
-  const safeStateName = floodData.state || 'Unknown State';
-  const safeRiskLevel = floodData.riskLevel || 'unknown';
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -89,18 +74,18 @@ const FloodStats: React.FC<FloodStatsProps> = ({ floodData }) => {
         <div className="space-y-3">
           <div>
             <p className="data-label">Region</p>
-            <p className="font-medium">{safeRegionName.charAt(0).toUpperCase() + safeRegionName.slice(1)}, {safeStateName}</p>
+            <p className="font-medium">{floodData.region.charAt(0).toUpperCase() + floodData.region.slice(1)}, {floodData.state}</p>
           </div>
           <div>
             <p className="data-label">Risk Level</p>
-            <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium border ${getRiskBadgeColor(safeRiskLevel)}`}>
-              {safeRiskLevel.charAt(0).toUpperCase() + safeRiskLevel.slice(1)}
+            <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium border ${getRiskBadgeColor(floodData.riskLevel)}`}>
+              {floodData.riskLevel.charAt(0).toUpperCase() + floodData.riskLevel.slice(1)}
             </span>
           </div>
           <div className="flex justify-between items-center">
             <div>
               <p className="data-label">Prediction Accuracy</p>
-              <p className="data-value">{floodData.predictionAccuracy || 0}%</p>
+              <p className="data-value">{floodData.predictionAccuracy}%</p>
             </div>
             <div>
               <p className="data-label">Last Updated</p>
@@ -192,7 +177,7 @@ const FloodStats: React.FC<FloodStatsProps> = ({ floodData }) => {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <p className="data-label">Rainfall</p>
-            <p className="data-value">{floodData.currentRainfall || 0} mm</p>
+            <p className="data-value">{floodData.currentRainfall} mm</p>
           </div>
           
           {floodData.riverData ? (
@@ -200,7 +185,7 @@ const FloodStats: React.FC<FloodStatsProps> = ({ floodData }) => {
               <p className="data-label flex items-center justify-between">
                 <span>
                   <Droplet className="mr-1 h-3 w-3 inline" />
-                  {floodData.riverData.name || 'River'}
+                  {floodData.riverData.name}
                 </span>
                 {floodData.riverData.currentLevel >= floodData.riverData.warningLevel && (
                   <span className={`text-xs px-1 rounded ${floodData.riverData.currentLevel >= floodData.riverData.dangerLevel ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
@@ -209,7 +194,7 @@ const FloodStats: React.FC<FloodStatsProps> = ({ floodData }) => {
                 )}
               </p>
               <div className="flex items-center">
-                <p className="data-value">{floodData.riverData.currentLevel || 0} m</p>
+                <p className="data-value">{floodData.riverData.currentLevel} m</p>
                 {floodData.riverData.trend === 'rising' && <ArrowTrendingUp className="h-4 w-4 ml-1 text-flood-danger" />}
                 {floodData.riverData.trend === 'falling' && <ArrowTrendingDown className="h-4 w-4 ml-1 text-flood-safe" />}
                 {floodData.riverData.trend === 'stable' && <ArrowTrendingStable className="h-4 w-4 ml-1 text-muted-foreground" />}
@@ -218,7 +203,7 @@ const FloodStats: React.FC<FloodStatsProps> = ({ floodData }) => {
           ) : (
             <div>
               <p className="data-label">River Level</p>
-              <p className="data-value">{floodData.riverLevel || 0} m</p>
+              <p className="data-value">{floodData.riverLevel} m</p>
             </div>
           )}
           
@@ -227,7 +212,7 @@ const FloodStats: React.FC<FloodStatsProps> = ({ floodData }) => {
               <Earth className="mr-1 h-4 w-4 text-muted-foreground" />
               Affected Area
             </p>
-            <p className="data-value">{floodData.affectedArea || 0} km²</p>
+            <p className="data-value">{floodData.affectedArea} km²</p>
           </div>
           <div>
             <p className="data-label flex items-center justify-between">
@@ -237,7 +222,7 @@ const FloodStats: React.FC<FloodStatsProps> = ({ floodData }) => {
               </span>
               <span className="text-xs text-muted-foreground">({getAffectedPercentage()}%)</span>
             </p>
-            <p className="data-value">{(floodData.populationAffected || 0).toLocaleString()}</p>
+            <p className="data-value">{floodData.populationAffected.toLocaleString()}</p>
           </div>
         </div>
       </div>

@@ -1,35 +1,17 @@
 
 import React, { useEffect } from 'react';
 import L from 'leaflet';
-import { IMDRegionData } from '../../services/imdApiService';
+import { MapMarkerProps } from './types';
 
-interface MapMarkerProps {
-  data: IMDRegionData;
-  map: L.Map;
-  selectedDistrict: string;
-  selectedState: string;
-  setSelectedDistrict: (district: string) => void;
-  setSelectedState: (state: string) => void;
-}
-
-const MapMarker: React.FC<MapMarkerProps> = ({ 
-  data, 
-  map, 
-  selectedDistrict, 
-  selectedState, 
-  setSelectedDistrict, 
-  setSelectedState 
-}) => {
+const MapMarker = ({ data, map, selectedRegion, popupRef }: MapMarkerProps) => {
   useEffect(() => {
-    if (!map || !data) return;
+    if (!map) return;
 
-    const riskLevel = data.floodRiskLevel || 'low';
-    
     // Set marker color based on risk level
     const color = 
-      riskLevel === 'severe' ? '#F44336' :
-      riskLevel === 'high' ? '#FF9800' :
-      riskLevel === 'medium' ? '#FFC107' : 
+      data.riskLevel === 'severe' ? '#F44336' :
+      data.riskLevel === 'high' ? '#FF9800' :
+      data.riskLevel === 'medium' ? '#FFC107' : 
       '#4CAF50';
     
     // Create custom marker icon
@@ -42,42 +24,63 @@ const MapMarker: React.FC<MapMarkerProps> = ({
           </svg>
         </div>
       `,
-      className: riskLevel === 'severe' || riskLevel === 'high' ? 'animate-pulse' : '',
+      className: data.riskLevel === 'severe' || data.riskLevel === 'high' ? 'animate-pulse' : '',
       iconSize: [24, 24],
       iconAnchor: [12, 24]
     });
     
-    // Create and add marker
+    // Create and add marker with correct coordinates
     const marker = L.marker([data.coordinates[0], data.coordinates[1]], {
       icon: customIcon
     }).addTo(map);
     
-    // Create popup content with defensive checks
-    const reservoirPercentage = data.reservoirPercentage ? data.reservoirPercentage.toFixed(1) + '%' : 'N/A';
-    const inflowCusecs = data.inflowCusecs ? data.inflowCusecs.toLocaleString() : 'N/A';
-    const riskDisplay = (data.floodRiskLevel || 'N/A').toUpperCase();
-    
+    // Create popup with info
     const popupContent = `
       <div class="map-tooltip">
-        <div class="font-bold text-sm">${data.district}, ${data.state}</div>
+        <div class="font-bold text-sm">${data.region.charAt(0).toUpperCase() + data.region.slice(1)}, ${data.state}</div>
         <div class="mt-1">
           <div class="flex justify-between">
             <span>Risk Level:</span>
             <span class="font-semibold ${
-              riskLevel === 'severe' ? 'text-red-600' :
-              riskLevel === 'high' ? 'text-orange-500' :
-              riskLevel === 'medium' ? 'text-amber-500' :
+              data.riskLevel === 'severe' ? 'text-red-600' :
+              data.riskLevel === 'high' ? 'text-orange-500' :
+              data.riskLevel === 'medium' ? 'text-amber-500' :
               'text-green-600'
-            }">${riskDisplay}</span>
+            }">${data.riskLevel.toUpperCase()}</span>
           </div>
           <div class="flex justify-between">
-            <span>Reservoir Level:</span>
-            <span>${reservoirPercentage}</span>
+            <span>Affected Area:</span>
+            <span>${data.affectedArea} km²</span>
           </div>
           <div class="flex justify-between">
-            <span>Inflow:</span>
-            <span>${inflowCusecs} cusecs</span>
+            <span>Population:</span>
+            <span>${data.populationAffected.toLocaleString()}</span>
           </div>
+          ${data.predictedFlood ? `
+            <div class="mt-2 pt-1 border-t border-gray-200">
+              <div class="font-medium">Flood Prediction</div>
+              <div class="flex justify-between">
+                <span>Probability:</span>
+                <span class="${
+                  data.predictedFlood.probabilityPercentage > 75 ? 'text-red-600' :
+                  data.predictedFlood.probabilityPercentage > 50 ? 'text-orange-500' :
+                  'text-amber-500'
+                }">${data.predictedFlood.probabilityPercentage}%</span>
+              </div>
+              <div class="flex justify-between">
+                <span>Expected Date:</span>
+                <span>${new Date(data.predictedFlood.date).toLocaleDateString()}</span>
+              </div>
+              ${data.predictedFlood.source ? `
+                <div class="mt-1 text-xs flex items-center">
+                  <span>Source: </span>
+                  <a href="${data.predictedFlood.source.url}" target="_blank" class="text-blue-600 ml-1 hover:underline">
+                    ${data.predictedFlood.source.name}
+                  </a>
+                </div>
+              ` : ''}
+            </div>
+          ` : ''}
         </div>
       </div>
     `;
@@ -89,30 +92,32 @@ const MapMarker: React.FC<MapMarkerProps> = ({
       maxWidth: 300
     }).setContent(popupContent);
     
+    // Show popup on marker click
     marker.bindPopup(popup);
-    
-    // Add click event
     marker.on('click', () => {
-      setSelectedState(data.state);
-      setSelectedDistrict(data.district);
-      map.flyTo(data.coordinates, 10);
+      if (popupRef.current) {
+        popupRef.current.close();
+      }
+      marker.openPopup();
+      popupRef.current = popup;
     });
     
-    // Highlight if selected
-    if (data.district === selectedDistrict && data.state === selectedState) {
+    // Highlight the marker if it's the selected region
+    if (data.region === selectedRegion) {
       const markerElement = marker.getElement();
       if (markerElement) {
         markerElement.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2', 'z-50');
       }
+      // Open the popup if this is the selected region
       marker.openPopup();
     }
 
     return () => {
       map.removeLayer(marker);
     };
-  }, [data, map, selectedDistrict, selectedState, setSelectedDistrict, setSelectedState]);
+  }, [data, map, selectedRegion, popupRef]);
 
-  return null;
+  return null; // This component doesn't render anything directly
 };
 
 export default MapMarker;
