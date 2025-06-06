@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState } from 'react';
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
 import * as L from 'leaflet';
@@ -13,7 +14,7 @@ interface FloodMapProps {
 }
 
 interface GeoJSONData {
-  type: string;
+  type: 'FeatureCollection';
   features: any[];
 }
 
@@ -25,12 +26,6 @@ const FloodMap: React.FC<FloodMapProps> = ({
   className = '',
   onDistrictClick 
 }) => {
-  const [geoJsonData, setGeoJsonData] = useState<GeoJSONData | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const geoJsonRef = useRef<L.GeoJSON | null>(null);
-
   // Normalize district name for comparison
   const normalizeDistrictName = (name: string): string => {
     return name
@@ -51,6 +46,12 @@ const FloodMap: React.FC<FloodMapProps> = ({
            normalizedFeature.includes(normalizedSelected) ||
            normalizedSelected.includes(normalizedFeature);
   };
+
+  const [geoJsonData, setGeoJsonData] = useState<GeoJSONData | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const geoJsonRef = useRef<L.GeoJSON | null>(null);
 
   useEffect(() => {
     const loadGeoJsonData = async () => {
@@ -199,26 +200,22 @@ const FloodMap: React.FC<FloodMapProps> = ({
   return (
     <div className={`relative ${className}`}>
       <MapContainer
-        {...{
-          center: getMapCenter(),
-          zoom: coordinates ? 10 : (selectedState ? 7 : 5),
-          style: { height: '400px', width: '100%' },
-          scrollWheelZoom: false
-        }}
+        center={getMapCenter()}
+        zoom={coordinates ? 10 : (selectedState ? 7 : 5)}
+        style={{ height: '400px', width: '100%' }}
+        scrollWheelZoom={false}
         ref={mapRef}
       >
         <TileLayer
-          {...{
-            url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          }}
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
         
         {geoJsonData && (
           <GeoJSON
             key={`geojson-${selectedState}-${selectedDistrict}`}
             data={geoJsonData}
-            style={getDistrictStyle}
+            pathOptions={getDistrictStyle}
             eventHandlers={{
               add: onEachFeature
             }}
