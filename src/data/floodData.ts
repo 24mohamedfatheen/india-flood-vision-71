@@ -1,9 +1,9 @@
-
 // src/data/floodData.ts
 
-import { IMDRegionData, imdApiService } from '../services/imdApiService';
-import { staticHistoricalRainfallData } from './staticHistoricalRainfallData';
-import { parseCsv } from '../utils/csvParser';
+import { IMDRegionData } from '../services/imdApiService';
+import { imdApiService } from '../services/imdApiService'; // Import the live API service
+import { staticHistoricalRainfallData } from './staticHistoricalRainfallData'; // Import the new static historical data
+import { parseCsv } from '../utils/csvParser'; // Import the CSV parser
 
 // Hardcoded content of weather.csv for direct use in the browser environment
 const WEATHER_CSV_CONTENT = `
@@ -104,7 +104,7 @@ export interface FloodData {
   };
 }
 
-// This will now store all the flood data from Supabase
+// This will now be a mutable array that stores either live data or static fallback
 export let floodData: FloodData[] = [];
 
 // Add proper type for the cached data with timestamp
@@ -125,6 +125,7 @@ const IMD_CACHE_KEY = 'imd_data_cache';
 
 // Helper function to map IMDRegionData to FloodData
 const mapIMDRegionDataToFloodData = (imdData: IMDRegionData[]): FloodData[] => {
+  const currentYear = new Date().getFullYear();
   const mappedData = imdData.map((item, index) => {
     // currentRainfall Derivation (No Randomness)
     // Direct, linear, non-random scaling of reservoirPercentage and inflowCusecs
@@ -135,14 +136,18 @@ const mapIMDRegionDataToFloodData = (imdData: IMDRegionData[]): FloodData[] => {
       derivedCurrentRainfall = 5;
     }
 
+    // Find coordinates from the dynamically generated regions and ensure proper tuple type
+    const regionCoords = regions.find(r => r.value === item.district.toLowerCase())?.coordinates;
+    const coordinates: [number, number] = regionCoords ? [regionCoords[0], regionCoords[1]] : [0, 0];
+
     return {
       id: index + 1,
       region: item.district,
       state: item.state,
       riskLevel: item.floodRiskLevel,
-      affectedArea: item.affectedArea,
-      populationAffected: item.populationAffected,
-      coordinates: item.coordinates,
+      affectedArea: 0, // Remain 0 unless directly provided in Supabase
+      populationAffected: 0, // Remain 0 unless directly provided in Supabase
+      coordinates,
       timestamp: new Date().toISOString(),
       currentRainfall: derivedCurrentRainfall,
       historicalRainfallData: [], // Initialize empty, getHistoricalRainfallData will populate
@@ -191,7 +196,7 @@ const loadCachedData = (): void => {
 // Initialize by loading cache
 loadCachedData();
 
-// Main function to fetch all IMD data from Supabase
+// Improved API fetch function with proper caching and fallback
 export const fetchImdData = async (forceRefresh = false): Promise<FloodData[]> => {
   console.log('fetchImdData called, forceRefresh:', forceRefresh);
 
@@ -205,8 +210,8 @@ export const fetchImdData = async (forceRefresh = false): Promise<FloodData[]> =
   try {
     console.log('Attempting to fetch fresh IMD data from live API...');
 
-    // Fetch from the live Supabase API
-    const liveImdData = await imdApiService.fetchAggregatedFloodData();
+    // Attempt to fetch from the live API
+    const liveImdData = await imdApiService.fetchFloodData();
 
     if (liveImdData && liveImdData.length > 0) {
       const now = new Date();
@@ -227,12 +232,44 @@ export const fetchImdData = async (forceRefresh = false): Promise<FloodData[]> =
       floodData = mapIMDRegionDataToFloodData(liveImdData);
       return floodData;
     } else {
-      console.warn('Live API returned no data. Using fallback.');
-      return [];
+      console.warn('Live API returned no data. Falling back to static data.');
+      // Fallback to static data only for regions with no live data
+      const staticFallbackData = regions.map(r => {
+        const currentYear = new Date().getFullYear();
+        const historicalForRegion = staticHistoricalRainfallData[r.value.toLowerCase()];
+
+        let currentRainfallValue = 5; // Fixed minimum as specified
+        if (historicalForRegion && historicalForRegion.length > 0) {
+          const currentYearStatic = historicalForRegion.filter(d => d.year === currentYear);
+          if (currentYearStatic.length > 0) {
+            currentRainfallValue = Math.max(5, currentYearStatic.reduce((sum, item) => sum + item.rainfall, 0) / currentYearStatic.length);
+          } else {
+            currentRainfallValue = Math.max(5, historicalForRegion.reduce((sum, item) => sum + item.rainfall, 0) / historicalForRegion.length);
+          }
+        }
+
+        const coordinates: [number, number] = [r.coordinates[0], r.coordinates[1]];
+
+        return {
+          id: regions.indexOf(r) + 1,
+          region: r.label,
+          state: r.state,
+          riskLevel: 'low' as const,
+          affectedArea: 0, // No dummy data
+          populationAffected: 0, // No dummy data
+          coordinates,
+          timestamp: new Date().toISOString(),
+          currentRainfall: currentRainfallValue,
+          historicalRainfallData: [],
+          predictionAccuracy: 70,
+        };
+      });
+      floodData = staticFallbackData;
+      return floodData;
     }
 
-  } catch (error: any) {
-    console.error('Error fetching IMD data from live API:', error);
+  } catch (error) {
+    console.error('Error fetching IMD data from live API, falling back to static:', error);
 
     // If fetch fails but we have cached data, use it even if expired
     if (imdDataCache) {
@@ -241,25 +278,27 @@ export const fetchImdData = async (forceRefresh = false): Promise<FloodData[]> =
       return floodData;
     }
 
-    // Return empty array if no cached data available
-    console.log('No cached data available, returning empty array.');
-    return [];
+    // Return static data if no cached data available
+    console.log('No cached data, returning static data.');
+    const staticFallbackData = regions.map(r => {
+      const coordinates: [number, number] = [r.coordinates[0], r.coordinates[1]];
+      return {
+        id: regions.indexOf(r) + 1,
+        region: r.label,
+        state: r.state,
+        riskLevel: 'low' as const,
+        affectedArea: 0,
+        populationAffected: 0,
+        coordinates,
+        timestamp: new Date().toISOString(),
+        currentRainfall: 5, // Fixed minimum
+        historicalRainfallData: [],
+        predictionAccuracy: 70,
+      };
+    });
+    floodData = staticFallbackData;
+    return floodData;
   }
-};
-
-// Function to get all states from live data
-export const getAllStates = (): string[] => {
-  const states = Array.from(new Set(floodData.map(data => data.state))).sort();
-  return states;
-};
-
-// Function to get districts for a specific state from live data
-export const getDistrictsForState = (state: string): string[] => {
-  const districts = floodData
-    .filter(data => data.state === state)
-    .map(data => data.region)
-    .sort();
-  return Array.from(new Set(districts));
 };
 
 // Improved function to get region data with consistency
@@ -273,7 +312,7 @@ export const getFloodDataForRegion = (region: string): FloodData | null => {
     return matchingRegion;
   }
 
-  // If no match is found, return the first item or null
+  // If no match is found, return Mumbai as default from the current floodData
   return floodData[0] || null;
 };
 
